@@ -21,7 +21,7 @@ A modular, user-friendly script that handles system updates, cleanup, and mainte
 ## Quick Install
 
 ```bash
-git clone https://github.com/platinum8300/updatelite.git
+git clone https://github.com/platinum8300/updatelite-arch.git
 cd updatelite
 ./install.sh
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # updateLITE Arch Edition - System maintenance for Arch Linux / CachyOS
-# https://github.com/platinum8300/updatelite
+# https://github.com/platinum8300/updatelite-arch
 #
 # License: AGPL-3.0
 #
@@ -86,7 +86,7 @@ Examples:
   updatelite              Run full system maintenance
   updatelite --version    Show version info
 
-For more information, visit: https://github.com/platinum8300/updatelite
+For more information, visit: https://github.com/platinum8300/updatelite-arch
 EOF
 }
 
