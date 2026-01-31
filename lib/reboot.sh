@@ -74,9 +74,9 @@ check_reboot_required() {
     # Show reboot notice or confirmation
     if [[ "$needs_reboot" == "true" ]]; then
         echo ""
-        echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════════════╗${RESET}"
-        echo -e "${BOLD}${YELLOW}║            ⚠️  REBOOT RECOMMENDED ⚠️                     ║${RESET}"
-        echo -e "${BOLD}${YELLOW}╚════════════════════════════════════════════════════════╝${RESET}"
+        echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════════════ ${RESET}"
+        echo -e "${BOLD}${YELLOW}║            ⚠️  REBOOT RECOMMENDED ⚠️                    ${RESET}"
+        echo -e "${BOLD}${YELLOW}╚════════════════════════════════════════════════════════ ${RESET}"
         echo ""
 
         if [[ ${#reboot_packages[@]} -gt 0 ]]; then
