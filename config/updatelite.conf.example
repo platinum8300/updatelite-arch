@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════
+# UPDATELITE ARCH EDITION - CONFIGURATION
+# ═══════════════════════════════════════════════════════════
+# Location: ~/.config/updatelite/config
+# Format: KEY=value (one per line)
+# ═══════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────
+# MODULES
+# Enable or disable update modules (true/false)
+# ─────────────────────────────────────────────────────────────
+
+# System packages via pacman
+ENABLE_PACMAN=true
+
+# AUR packages via paru/yay
+ENABLE_AUR=true
+
+# Flatpak applications
+ENABLE_FLATPAK=true
+
+# Docker images (disabled by default)
+ENABLE_DOCKER=false
+
+# ─────────────────────────────────────────────────────────────
+# AUR SETTINGS
+# ─────────────────────────────────────────────────────────────
+
+# Preferred AUR helper: paru, yay, or auto (detect)
+AUR_HELPER=auto
+
+# Packages to skip during AUR updates (space-separated)
+# Example: AUR_SKIP_PACKAGES=nvidia-dkms-git linux-cachyos
+AUR_SKIP_PACKAGES=
+
+# ─────────────────────────────────────────────────────────────
+# CLEANUP SETTINGS
+# ─────────────────────────────────────────────────────────────
+
+# Remove orphan packages
+CLEANUP_ORPHANS=true
+
+# Clean package cache (keep last 2 versions)
+CLEANUP_CACHE=true
+
+# Vacuum systemd journal
+CLEANUP_JOURNAL=true
+
+# Keep journal entries for this many days
+JOURNAL_VACUUM_DAYS=7
+
+# ─────────────────────────────────────────────────────────────
+# LOGGING
+# ─────────────────────────────────────────────────────────────
+
+# Enable logging to file
+ENABLE_LOGGING=false
+
+# Log directory
+LOG_DIR=$HOME/logs/updatelite
+
+# ─────────────────────────────────────────────────────────────
+# INTERFACE
+# ─────────────────────────────────────────────────────────────
+
+# Show motivational phrases at the end
+ENABLE_PHRASES=true
+
+# Enable colored output
+ENABLE_COLORS=true
+
+# ─────────────────────────────────────────────────────────────
+# REBOOT DETECTION
+# ─────────────────────────────────────────────────────────────
+
+# Packages that require a reboot when updated (space-separated)
+# When these are updated, you'll be notified to reboot
+CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa nvidia

@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+#
+# updateLITE Arch Edition - System maintenance for Arch Linux / CachyOS
+# https://github.com/platinum8300/updatelite
+#
+# License: AGPL-3.0
+#
+
+set -euo pipefail
+
+# Determine script location and library path
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Library path detection (installed vs local)
+if [[ -d "$SCRIPT_DIR/lib" ]]; then
+    LIB_DIR="$SCRIPT_DIR/lib"
+elif [[ -d "${XDG_DATA_HOME:-$HOME/.local/share}/updatelite/lib" ]]; then
+    LIB_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/updatelite/lib"
+elif [[ -d "/usr/share/updatelite/lib" ]]; then
+    LIB_DIR="/usr/share/updatelite/lib"
+else
+    echo "Error: Cannot find updatelite library files" >&2
+    exit 1
+fi
+
+# Source library modules
+source "$LIB_DIR/colors.sh"
+source "$LIB_DIR/config.sh"
+source "$LIB_DIR/utils.sh"
+source "$LIB_DIR/phrases.sh"
+source "$LIB_DIR/summary.sh"
+source "$LIB_DIR/pacman.sh"
+source "$LIB_DIR/aur.sh"
+source "$LIB_DIR/flatpak.sh"
+source "$LIB_DIR/docker.sh"
+source "$LIB_DIR/cleanup.sh"
+source "$LIB_DIR/services.sh"
+source "$LIB_DIR/reboot.sh"
+
+# CLI options
+SHOW_VERSION=false
+SHOW_HELP=false
+CREATE_CONFIG=false
+
+# Parse arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--version)
+                SHOW_VERSION=true
+                shift
+                ;;
+            -h|--help)
+                SHOW_HELP=true
+                shift
+                ;;
+            --create-config)
+                CREATE_CONFIG=true
+                shift
+                ;;
+            *)
+                echo -e "${RED}Unknown option: $1${RESET}"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Show usage
+show_usage() {
+    cat << EOF
+Usage: updatelite [OPTIONS]
+
+updateLITE Arch Edition - System maintenance for Arch Linux / CachyOS
+
+Options:
+  --create-config    Create default configuration file
+  -v, --version      Show version information
+  -h, --help         Show this help message
+
+Configuration:
+  Config file: ~/.config/updatelite/config
+
+Examples:
+  updatelite              Run full system maintenance
+  updatelite --version    Show version info
+
+For more information, visit: https://github.com/platinum8300/updatelite
+EOF
+}
+
+# Show version
+show_version() {
+    echo "updateLITE Arch Edition v${VERSION}"
+    echo "System: $(detect_distro) ($(detect_kernel))"
+    echo "AUR helper: $(detect_aur_helper)"
+}
+
+# Main function
+main() {
+    parse_args "$@"
+
+    # Handle info commands
+    if [[ "$SHOW_HELP" == "true" ]]; then
+        show_usage
+        exit 0
+    fi
+
+    if [[ "$SHOW_VERSION" == "true" ]]; then
+        show_version
+        exit 0
+    fi
+
+    if [[ "$CREATE_CONFIG" == "true" ]]; then
+        create_default_config
+        exit 0
+    fi
+
+    # Pre-flight checks
+    check_not_root
+    check_deps
+
+    if ! check_pacman_lock; then
+        exit 1
+    fi
+
+    # Load configuration
+    load_config
+
+    # Initialize tracking
+    init_tracking
+
+    # Show header
+    show_header
+
+    # Run updates
+    update_pacman
+    update_aur
+    update_flatpak
+    update_docker
+
+    # Cleanup
+    system_cleanup
+
+    # Verifications
+    check_services
+    check_reboot_required
+
+    # Summary
+    show_summary
+
+    # Footer
+    show_footer
+}
+
+# Run main
+main "$@"

@@ -1,0 +1,31 @@
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+tests/output/
+
+# Local config (user specific)
+config/updatelite.conf
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Claude Code settings
+.claude/
