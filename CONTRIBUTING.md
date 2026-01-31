@@ -26,7 +26,7 @@ Be respectful and constructive. We're all here to make a useful tool.
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/my-feature`
 3. Make your changes
-4. Test on Arch Linux or CachyOS
+4. Test on Arch Linux
 5. Run shellcheck: `shellcheck updatelite lib/*.sh`
 6. Commit with a clear message
 7. Push and create a PR
@@ -80,7 +80,7 @@ function my_function {
 
 Before submitting:
 
-1. Test on a clean Arch/CachyOS installation
+1. Test on a clean Arch Linux installation
 2. Test with `--dry-run` flag
 3. Verify all modules can be disabled
 4. Check that errors are handled gracefully

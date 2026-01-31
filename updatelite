@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# updateLITE Arch Edition - System maintenance for Arch Linux / CachyOS
+# updateLITE Arch Edition - System maintenance for Arch Linux
 # https://github.com/platinum8300/updatelite-arch
 #
 # License: AGPL-3.0
@@ -72,7 +72,7 @@ show_usage() {
     cat << EOF
 Usage: updatelite [OPTIONS]
 
-updateLITE Arch Edition - System maintenance for Arch Linux / CachyOS
+updateLITE Arch Edition - System maintenance for Arch Linux
 
 Options:
   --create-config    Create default configuration file
