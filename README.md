@@ -4,7 +4,7 @@
 
 # updateLITE Arch Edition
 
-System maintenance tool for **Arch Linux** and **CachyOS**
+System maintenance tool for **Arch Linux**
 
 A modular, user-friendly script that handles system updates, cleanup, and maintenance in one command.
 
@@ -16,7 +16,7 @@ A modular, user-friendly script that handles system updates, cleanup, and mainte
 - **Reboot Detection**: Know when critical packages require a restart
 - **Modular Design**: Enable only what you need
 - **Multi-Shell Support**: Fish, Bash, and Zsh integration
-- **CachyOS Optimized**: Automatic detection of CachyOS-specific features
+- **Arch Derivatives**: Works with CachyOS, EndeavourOS, and other Arch-based distros
 
 ## Quick Install
 
@@ -69,7 +69,7 @@ See [config/updatelite.conf.example](config/updatelite.conf.example) for all opt
 ## Requirements
 
 **Required:**
-- Arch Linux or CachyOS
+- Arch Linux (or derivatives)
 - Bash 4.0+
 - sudo
 
@@ -124,5 +124,5 @@ See [LICENSE](LICENSE) for the full text.
 
 ## Acknowledgments
 
-- The Arch Linux and CachyOS communities
+- The Arch Linux community
 - Contributors and users who provide feedback

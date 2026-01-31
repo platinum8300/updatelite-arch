@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Added
 - Modular Bash script architecture with lib/ directory
-- Support for Arch Linux and CachyOS
+- Support for Arch Linux (and derivatives)
 - Automatic detection of AUR helper (paru/yay)
 - Configuration system in ~/.config/updatelite/
 - Update modules:

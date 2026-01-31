@@ -2,7 +2,7 @@
 # Source this file or place in ~/.config/fish/conf.d/
 
 # Wrapper function
-function updatelite --description "updateLITE Arch Edition - System maintenance for Arch/CachyOS"
+function updatelite --description "updateLITE Arch Edition - System maintenance for Arch Linux"
     # Find the actual script
     set -l script_path
 

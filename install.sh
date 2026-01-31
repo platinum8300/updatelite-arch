@@ -56,7 +56,7 @@ check_requirements() {
 
     # Check if Arch-based
     if [[ ! -f /etc/arch-release ]] && [[ ! -f /etc/cachyos-release ]]; then
-        print_error "This script requires Arch Linux or CachyOS"
+        print_error "This script requires Arch Linux"
         exit 1
     fi
     print_success "Distribution: $(cat /etc/os-release | grep '^NAME=' | cut -d= -f2 | tr -d '\"')"
