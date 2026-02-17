@@ -26,5 +26,3 @@ config/updatelite.conf
 # Build artifacts
 *.tar.gz
 *.zip
-
-# IDE/Tool config
