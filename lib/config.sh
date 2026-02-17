@@ -21,6 +21,7 @@ declare -g ENABLE_PACMAN="${ENABLE_PACMAN:-true}"
 declare -g ENABLE_AUR="${ENABLE_AUR:-true}"
 declare -g ENABLE_FLATPAK="${ENABLE_FLATPAK:-true}"
 declare -g ENABLE_DOCKER="${ENABLE_DOCKER:-false}"
+declare -g ENABLE_FIRMWARE="${ENABLE_FIRMWARE:-true}"
 
 declare -g AUR_HELPER="${AUR_HELPER:-auto}"
 declare -g AUR_SKIP_PACKAGES="${AUR_SKIP_PACKAGES:-}"
@@ -36,7 +37,7 @@ declare -g LOG_DIR="${LOG_DIR:-$HOME/logs/updatelite}"
 declare -g ENABLE_PHRASES="${ENABLE_PHRASES:-true}"
 declare -g ENABLE_COLORS="${ENABLE_COLORS:-true}"
 
-declare -g CRITICAL_PACKAGES="${CRITICAL_PACKAGES:-linux systemd glibc gcc-libs linux-firmware mesa}"
+declare -g CRITICAL_PACKAGES="${CRITICAL_PACKAGES:-linux systemd glibc gcc-libs linux-firmware mesa fwupd}"
 
 # Config file location
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/updatelite"
@@ -65,7 +66,7 @@ load_config() {
 
         # Only set known configuration keys
         case "$key" in
-            ENABLE_PACMAN|ENABLE_AUR|ENABLE_FLATPAK|ENABLE_DOCKER|\
+            ENABLE_PACMAN|ENABLE_AUR|ENABLE_FLATPAK|ENABLE_DOCKER|ENABLE_FIRMWARE|\
             AUR_HELPER|AUR_SKIP_PACKAGES|\
             CLEANUP_ORPHANS|CLEANUP_CACHE|CLEANUP_JOURNAL|JOURNAL_VACUUM_DAYS|\
             ENABLE_LOGGING|LOG_DIR|\
@@ -94,6 +95,7 @@ ENABLE_PACMAN=true
 ENABLE_AUR=true
 ENABLE_FLATPAK=true
 ENABLE_DOCKER=false
+ENABLE_FIRMWARE=true
 
 # AUR helper (paru/yay/auto)
 AUR_HELPER=auto
@@ -116,7 +118,7 @@ ENABLE_PHRASES=true
 ENABLE_COLORS=true
 
 # Critical packages that require reboot (space-separated)
-CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa
+CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa fwupd
 CONFIGEOF
 
     echo "Created default config at $CONFIG_FILE"

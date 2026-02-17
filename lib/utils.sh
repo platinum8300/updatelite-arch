@@ -26,6 +26,7 @@ declare -g UPDATES_AUR=0
 declare -g UPDATES_AUR_FAILED=0
 declare -g UPDATES_FLATPAK=0
 declare -g UPDATES_DOCKER=0
+declare -g UPDATES_FIRMWARE=0
 declare -g ORPHANS_REMOVED=0
 declare -g CACHE_FREED=""
 declare -g JOURNAL_FREED=""
@@ -45,6 +46,7 @@ init_tracking() {
     UPDATES_AUR_FAILED=0
     UPDATES_FLATPAK=0
     UPDATES_DOCKER=0
+    UPDATES_FIRMWARE=0
     ORPHANS_REMOVED=0
     CACHE_FREED=""
     JOURNAL_FREED=""

@@ -22,6 +22,9 @@ ENABLE_FLATPAK=true
 # Docker images (disabled by default)
 ENABLE_DOCKER=false
 
+# Firmware updates via fwupd
+ENABLE_FIRMWARE=true
+
 # ─────────────────────────────────────────────────────────────
 # AUR SETTINGS
 # ─────────────────────────────────────────────────────────────
@@ -75,4 +78,4 @@ ENABLE_COLORS=true
 
 # Packages that require a reboot when updated (space-separated)
 # When these are updated, you'll be notified to reboot
-CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa nvidia
+CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa nvidia fwupd

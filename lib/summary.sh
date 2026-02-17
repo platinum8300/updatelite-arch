@@ -76,6 +76,9 @@ show_summary() {
     else
         echo -e "  ${BOLD}${CYAN}FLATPAK${RESET}   ${GREEN}▲${RESET} ${UPDATES_FLATPAK} upgraded"
     fi
+    if [[ "$ENABLE_FIRMWARE" == "true" ]]; then
+        echo -e "  ${BOLD}${YELLOW}FIRMWARE${RESET}  ${GREEN}▲${RESET} ${UPDATES_FIRMWARE} updated"
+    fi
     echo ""
     echo -e "  ${BOLD}${YELLOW}CLEANUP${RESET}   Cache: ${CACHE_FREED:-0 MB}  Journal: ${JOURNAL_FREED:-0 MB}  Orphans: ${ORPHANS_REMOVED}"
     echo ""

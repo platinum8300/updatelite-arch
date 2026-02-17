@@ -46,6 +46,7 @@ source "$LIB_DIR/pacman.sh"
 source "$LIB_DIR/aur.sh"
 source "$LIB_DIR/flatpak.sh"
 source "$LIB_DIR/docker.sh"
+source "$LIB_DIR/firmware.sh"
 source "$LIB_DIR/cleanup.sh"
 source "$LIB_DIR/services.sh"
 source "$LIB_DIR/reboot.sh"
@@ -152,6 +153,7 @@ main() {
     update_aur
     update_flatpak
     update_docker
+    update_firmware
 
     # Cleanup
     system_cleanup
