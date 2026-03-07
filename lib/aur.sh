@@ -64,51 +64,57 @@ update_aur() {
 
     if [[ -n "$aur_pending" ]]; then
         echo -e "${CYAN}  Packages available for update:${RESET}"
+        local pending_list=()
         while IFS= read -r line; do
             echo "    • $line"
-            AUR_PACKAGES+=("$line")
+            pending_list+=("$line")
         done <<< "$aur_pending"
         echo ""
 
-        # Update with real-time output
+        # Attempt 1: bulk update
         local paru_exit=0
         "$helper" -Syu --noconfirm --color always || paru_exit=$?
 
-        # If failed, retry without tests
+        # Attempt 2: retry without tests if failed
         if [[ $paru_exit -ne 0 ]]; then
             echo -e "${YELLOW}  ⚠️  Retrying without test verification...${RESET}"
+            paru_exit=0
             "$helper" -Syu --noconfirm --skipreview --color always || paru_exit=$?
 
-            # If still failing, update individually
+            # Attempt 3: update individually if still failing
             if [[ $paru_exit -ne 0 ]]; then
-                local aur_updates
-                aur_updates=$("$helper" -Qua 2>/dev/null | cut -d' ' -f1 || true)
+                local remaining_pkgs
+                remaining_pkgs=$("$helper" -Qua 2>/dev/null | cut -d' ' -f1 || true)
 
-                if [[ -n "$aur_updates" ]]; then
+                if [[ -n "$remaining_pkgs" ]]; then
                     local count
-                    count=$(echo "$aur_updates" | wc -l)
+                    count=$(echo "$remaining_pkgs" | wc -l)
                     echo -e "${CYAN}  Updating ${count} packages individually...${RESET}"
-                    local success=0
 
                     while IFS= read -r pkg; do
                         if "$helper" -S --noconfirm --skipreview "$pkg" &>/dev/null; then
-                            ((success++)) || true
                             echo -e "${GREEN}    ✓ ${pkg}${RESET}"
                         else
-                            ((UPDATES_AUR_FAILED++)) || true
                             echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
                         fi
-                    done <<< "$aur_updates"
-
-                    UPDATES_AUR=$success
+                    done <<< "$remaining_pkgs"
                 fi
             fi
         fi
 
-        # Count successful AUR updates
-        if [[ $paru_exit -eq 0 && ${#AUR_PACKAGES[@]} -gt 0 ]]; then
-            UPDATES_AUR=${#AUR_PACKAGES[@]}
-        fi
+        # Determine results by comparing before/after state
+        local still_pending_pkgs
+        still_pending_pkgs=$("$helper" -Qua 2>/dev/null | awk '{print $1}' || true)
+
+        for entry in "${pending_list[@]}"; do
+            local pkg="${entry%% *}"
+            if [[ -z "$still_pending_pkgs" ]] || ! grep -qx "$pkg" <<< "$still_pending_pkgs"; then
+                AUR_PACKAGES+=("$entry")
+                ((UPDATES_AUR++)) || true
+            else
+                ((UPDATES_AUR_FAILED++)) || true
+            fi
+        done
     else
         echo -e "${GREEN}  ✓ All AUR packages are up to date${RESET}"
     fi

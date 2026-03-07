@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-03-08
+
+### Fixed
+- AUR update tracking: packages updated during a partially failed bulk run were not counted (e.g., fagram-bin updated successfully but shown as 0 upgraded)
+- AUR summary: failed packages (e.g., sha256sum mismatch) incorrectly appeared in the "Updated Packages" section
+- AUR retry logic: exit code not reset before retry attempt, causing unnecessary fallback to individual updates
+
 ## [1.0.0] - 2026-02-XX
 
 ### Initial Public Release
