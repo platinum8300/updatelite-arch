@@ -113,6 +113,12 @@ install_files() {
     cp "$SCRIPT_DIR/lib/"*.sh "$INSTALL_LIB/"
     print_success "Installed: $INSTALL_LIB/"
 
+    # Copy shell integration files
+    local install_shell="$HOME/.local/share/updatelite/shell-integration"
+    mkdir -p "$install_shell"
+    cp "$SCRIPT_DIR/shell-integration/"* "$install_shell/"
+    print_success "Installed: $install_shell/"
+
     # Copy example config if no config exists
     if [[ ! -f "$CONFIG_DIR/config" ]]; then
         if [[ -f "$SCRIPT_DIR/config/updatelite.conf.example" ]]; then
@@ -160,28 +166,28 @@ setup_shell() {
         print_success "$INSTALL_BIN is in PATH"
     fi
 
-    # Copy shell integration if available
-    local integration_dir="$SCRIPT_DIR/shell-integration"
+    # Setup shell-specific integration
+    local install_shell="$HOME/.local/share/updatelite/shell-integration"
 
     case "$current_shell" in
         fish)
-            if [[ -f "$integration_dir/updatelite.fish" ]]; then
+            if [[ -f "$install_shell/updatelite.fish" ]]; then
                 local fish_conf="$HOME/.config/fish/conf.d"
                 mkdir -p "$fish_conf"
-                cp "$integration_dir/updatelite.fish" "$fish_conf/"
+                cp "$install_shell/updatelite.fish" "$fish_conf/"
                 print_success "Fish integration installed"
             fi
             ;;
         zsh)
-            if [[ -f "$integration_dir/updatelite.zsh" ]]; then
+            if [[ -f "$install_shell/updatelite.zsh" ]]; then
                 print_info "To enable zsh integration, add to ~/.zshrc:"
-                echo -e "  ${CYAN}source $integration_dir/updatelite.zsh${RESET}"
+                echo -e "  ${CYAN}source $install_shell/updatelite.zsh${RESET}"
             fi
             ;;
         bash)
-            if [[ -f "$integration_dir/updatelite.bash" ]]; then
+            if [[ -f "$install_shell/updatelite.bash" ]]; then
                 print_info "To enable bash integration, add to ~/.bashrc:"
-                echo -e "  ${CYAN}source $integration_dir/updatelite.bash${RESET}"
+                echo -e "  ${CYAN}source $install_shell/updatelite.bash${RESET}"
             fi
             ;;
     esac

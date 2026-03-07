@@ -4,7 +4,7 @@
 # Bash completion for updatelite
 _updatelite_completions() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local opts="-n --dry-run --no-cleanup --no-services --create-config -v --version -h --help"
+    local opts="--create-config -v --version -h --help"
     COMPREPLY=($(compgen -W "$opts" -- "$cur"))
 }
 

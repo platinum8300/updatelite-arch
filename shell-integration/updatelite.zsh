@@ -5,10 +5,6 @@
 _updatelite() {
     local -a opts
     opts=(
-        '-n[Preview changes without applying]'
-        '--dry-run[Preview changes without applying]'
-        '--no-cleanup[Skip system cleanup]'
-        '--no-services[Skip service check]'
         '--create-config[Create default config file]'
         '-v[Show version]'
         '--version[Show version]'
