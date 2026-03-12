@@ -80,7 +80,7 @@ show_summary() {
         echo -e "  ${BOLD}${YELLOW}FIRMWARE${RESET}  ${GREEN}▲${RESET} ${UPDATES_FIRMWARE} updated"
     fi
     echo ""
-    echo -e "  ${BOLD}${YELLOW}CLEANUP${RESET}   Cache: ${CACHE_FREED:-0 MB}  Journal: ${JOURNAL_FREED:-0 MB}  Orphans: ${ORPHANS_REMOVED}"
+    echo -e "  ${BOLD}${YELLOW}CLEANUP${RESET}   Cache: ${CACHE_FREED:-0 MB}  Journal: ${JOURNAL_FREED:-0 MB}  Orphans: ${ORPHANS_REMOVED}  User: ${USER_CACHES_FREED:-0 MB}"
     echo ""
 
     # ═══════════════════════════════════════════════════════════════

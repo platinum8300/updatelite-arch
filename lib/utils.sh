@@ -17,7 +17,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Script version
-VERSION="1.1.2"
+VERSION="1.1.5"
 
 # Tracking variables
 declare -g UPDATES_PACMAN=0
@@ -30,6 +30,7 @@ declare -g UPDATES_FIRMWARE=0
 declare -g ORPHANS_REMOVED=0
 declare -g CACHE_FREED=""
 declare -g JOURNAL_FREED=""
+declare -g USER_CACHES_FREED=""
 declare -g START_TIME=0
 declare -g LOG_LINE_START=0
 
@@ -50,6 +51,7 @@ init_tracking() {
     ORPHANS_REMOVED=0
     CACHE_FREED=""
     JOURNAL_FREED=""
+    USER_CACHES_FREED=""
     START_TIME=$(date +%s)
     PACMAN_PACKAGES=()
     AUR_PACKAGES=()
