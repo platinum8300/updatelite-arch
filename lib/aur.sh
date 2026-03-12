@@ -16,26 +16,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-# Clean problematic AUR package cache
-clean_problematic_packages() {
-    local problematic=(
-        python-vega_datasets
-        python-pytest-flakefinder
-        python-safehttpx
-        python-groovy
-        python-mcp
-        python-httpx-sse
-        python-gradio-client
-        python-gradio
-    )
-
-    for pkg in "${problematic[@]}"; do
-        if [[ -d ~/.cache/paru/clone/$pkg ]]; then
-            rm -rf ~/.cache/paru/clone/$pkg 2>/dev/null
-        fi
-    done
-}
-
 # Update AUR packages
 update_aur() {
     if [[ "$ENABLE_AUR" != "true" ]]; then
@@ -52,9 +32,6 @@ update_aur() {
 
     show_section "AUR - Arch User Repository ($helper)" "${MAGENTA}" "📦"
 
-    # Clean problematic cache
-    clean_problematic_packages
-
     echo -e "${MAGENTA}  → Checking and updating AUR packages...${RESET}"
     echo ""
 
@@ -70,6 +47,14 @@ update_aur() {
             pending_list+=("$line")
         done <<< "$aur_pending"
         echo ""
+
+        # Clean clone cache for all pending packages before attempting download
+        while IFS= read -r line; do
+            local pkg="${line%% *}"
+            if [[ -d ~/.cache/paru/clone/$pkg ]]; then
+                rm -rf ~/.cache/paru/clone/$pkg 2>/dev/null
+            fi
+        done <<< "$aur_pending"
 
         # Attempt 1: bulk update
         local paru_exit=0
