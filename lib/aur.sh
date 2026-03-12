@@ -48,13 +48,8 @@ update_aur() {
         done <<< "$aur_pending"
         echo ""
 
-        # Clean clone cache for all pending packages before attempting download
-        while IFS= read -r line; do
-            local pkg="${line%% *}"
-            if [[ -d ~/.cache/paru/clone/$pkg ]]; then
-                rm -rf ~/.cache/paru/clone/$pkg 2>/dev/null
-            fi
-        done <<< "$aur_pending"
+        # Remove partial downloads from paru clone cache before attempting update
+        find ~/.cache/paru/clone/ -name "*.part" -type f -delete 2>/dev/null || true
 
         # Attempt 1: bulk update
         local paru_exit=0
