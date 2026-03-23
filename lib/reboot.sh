@@ -16,55 +16,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-# Check if reboot is required based on updated critical packages
+# Check if reboot is required by reading pacman hook output
 check_reboot_required() {
-    local log_file="/var/log/pacman.log"
+    local needs_reboot=false
+    local reboot_reasons=()
 
-    if [[ ! -f "$log_file" ]]; then
-        return 0
+    # Primary: check if pacman hooks flagged a reboot during this session
+    # This respects the distro's own reboot policy (e.g. CachyOS hooks)
+    if [[ -n "$PACMAN_OUTPUT_LOG" && -f "$PACMAN_OUTPUT_LOG" ]]; then
+        if grep -qi "reboot is recommended\|reboot.*required\|needs.*reboot" "$PACMAN_OUTPUT_LOG"; then
+            needs_reboot=true
+            reboot_reasons+=("core system packages (detected by pacman hooks)")
+        fi
     fi
 
-    # Get system boot time as Unix timestamp
-    local boot_time
-    boot_time=$(date -d "$(uptime -s)" +%s 2>/dev/null || echo 0)
-
-    # Get critical packages list
-    local critical_pkgs
-    IFS=' ' read -ra critical_pkgs <<< "$CRITICAL_PACKAGES"
-
-    local needs_reboot=false
-    local reboot_packages=()
-
-    # Check if any critical package was upgraded AFTER boot time
-    for pkg in "${critical_pkgs[@]}"; do
-        # Get the last upgrade line for this package
-        local last_upgrade
-        last_upgrade=$(grep "\[ALPM\] upgraded $pkg " "$log_file" | tail -1 || true)
-
-        if [[ -n "$last_upgrade" ]]; then
-            # Extract timestamp from log line: [2026-01-31T10:37:24+0100]
-            local log_timestamp
-            log_timestamp=$(echo "$last_upgrade" | grep -oP '\[\K[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}' || true)
-
-            if [[ -n "$log_timestamp" ]]; then
-                # Convert to Unix timestamp (replace T with space for date parsing)
-                local upgrade_time
-                upgrade_time=$(date -d "${log_timestamp/T/ }" +%s 2>/dev/null || echo 0)
-
-                # Only flag if upgrade happened AFTER boot
-                if [[ $upgrade_time -gt $boot_time ]]; then
-                    needs_reboot=true
-                    reboot_packages+=("$pkg")
-                fi
-            fi
-        fi
-    done
-
-    # Also check for kernel mismatch (running kernel vs installed kernel)
+    # Secondary: check for kernel version mismatch (running vs installed)
     local running_kernel
     running_kernel=$(uname -r)
 
-    # Check for cachyos kernel first, then standard linux
     local kernel_pkg=""
     for kernel in "linux-cachyos" "linux-cachyos-bore" "linux-cachyos-lts" "linux-zen" "linux-lts" "linux"; do
         kernel_pkg=$(pacman -Q "$kernel" 2>/dev/null | awk '{print $2}' || true)
@@ -74,17 +43,17 @@ check_reboot_required() {
     done
 
     if [[ -n "$kernel_pkg" ]]; then
-        # Extract version numbers for comparison
-        # running_kernel: 6.18.8-1-cachyos-bore -> 6.18.8
-        # kernel_pkg: 6.18.8-1 -> 6.18.8
         local running_ver="${running_kernel%%[-_]*}"
         local pkg_ver="${kernel_pkg%%-*}"
 
         if [[ "$running_ver" != "$pkg_ver" ]]; then
             needs_reboot=true
-            reboot_packages+=("kernel (running: $running_ver, installed: $pkg_ver)")
+            reboot_reasons+=("kernel (running: $running_ver, installed: $pkg_ver)")
         fi
     fi
+
+    # Cleanup temp file
+    [[ -n "$PACMAN_OUTPUT_LOG" && -f "$PACMAN_OUTPUT_LOG" ]] && rm -f "$PACMAN_OUTPUT_LOG"
 
     # Show reboot notice or confirmation
     if [[ "$needs_reboot" == "true" ]]; then
@@ -94,10 +63,10 @@ check_reboot_required() {
         echo -e "${BOLD}${YELLOW}╚════════════════════════════════════════════════════════ ${RESET}"
         echo ""
 
-        if [[ ${#reboot_packages[@]} -gt 0 ]]; then
+        if [[ ${#reboot_reasons[@]} -gt 0 ]]; then
             echo -e "${CYAN}  Critical packages updated:${RESET}"
-            for pkg in "${reboot_packages[@]}"; do
-                echo -e "    ${YELLOW}→${RESET} $pkg"
+            for reason in "${reboot_reasons[@]}"; do
+                echo -e "    ${YELLOW}→${RESET} $reason"
             done
         fi
 

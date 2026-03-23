@@ -85,14 +85,14 @@ update_pacman() {
     echo -e "${BLUE}  → Syncing and updating...${RESET}"
     echo ""
 
-    # Execute pacman with real-time output
+    # Execute pacman with real-time output, capturing hook messages for reboot detection
     local pacman_exit
     if [[ -n "$ignore_flag" ]]; then
-        sudo pacman -Syyu --noconfirm --color always $ignore_flag
+        sudo pacman -Syyu --noconfirm --color always $ignore_flag 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
     else
-        sudo pacman -Syyu --noconfirm --color always
+        sudo pacman -Syyu --noconfirm --color always 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
     fi
-    pacman_exit=$?
+    pacman_exit=${PIPESTATUS[0]}
 
     # If failed, check for PGP error
     if [[ $pacman_exit -ne 0 ]]; then
@@ -103,11 +103,11 @@ update_pacman() {
 
             echo -e "${BLUE}  → Retrying update...${RESET}"
             if [[ -n "$ignore_flag" ]]; then
-                sudo pacman -Syyu --noconfirm --color always $ignore_flag
+                sudo pacman -Syyu --noconfirm --color always $ignore_flag 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
             else
-                sudo pacman -Syyu --noconfirm --color always
+                sudo pacman -Syyu --noconfirm --color always 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
             fi
-            pacman_exit=$?
+            pacman_exit=${PIPESTATUS[0]}
         fi
     fi
 

@@ -17,7 +17,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Script version
-VERSION="1.1.5"
+VERSION="1.1.6"
 
 # Tracking variables
 declare -g UPDATES_PACMAN=0
@@ -33,6 +33,7 @@ declare -g JOURNAL_FREED=""
 declare -g USER_CACHES_FREED=""
 declare -g START_TIME=0
 declare -g LOG_LINE_START=0
+declare -g PACMAN_OUTPUT_LOG=""
 
 # Package lists for summary
 declare -ga PACMAN_PACKAGES=()
@@ -56,6 +57,7 @@ init_tracking() {
     PACMAN_PACKAGES=()
     AUR_PACKAGES=()
     FLATPAK_PACKAGES=()
+    PACMAN_OUTPUT_LOG=$(mktemp /tmp/updatelite-pacman.XXXXXX)
 
     # Save initial pacman log line count
     if [[ -f /var/log/pacman.log ]]; then
