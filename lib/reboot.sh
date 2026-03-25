@@ -23,8 +23,9 @@ check_reboot_required() {
 
     # Primary: check if pacman hooks flagged a reboot during this session
     # This respects the distro's own reboot policy (e.g. CachyOS hooks)
+    # Strip ANSI color codes before matching (pacman --color always embeds them)
     if [[ -n "$PACMAN_OUTPUT_LOG" && -f "$PACMAN_OUTPUT_LOG" ]]; then
-        if grep -qi "reboot is recommended\|reboot.*required\|needs.*reboot" "$PACMAN_OUTPUT_LOG"; then
+        if sed 's/\x1b\[[0-9;]*m//g' "$PACMAN_OUTPUT_LOG" | grep -qi "reboot is recommended\|reboot.*required\|needs.*reboot"; then
             needs_reboot=true
             reboot_reasons+=("core system packages (detected by pacman hooks)")
         fi
@@ -43,12 +44,12 @@ check_reboot_required() {
     done
 
     if [[ -n "$kernel_pkg" ]]; then
-        local running_ver="${running_kernel%%[-_]*}"
-        local pkg_ver="${kernel_pkg%%-*}"
-
-        if [[ "$running_ver" != "$pkg_ver" ]]; then
+        # Compare full version-pkgrel (e.g. "6.19.9-2") not just upstream version
+        # uname -r returns "6.19.9-2-cachyos-bore", pacman gives "6.19.9-2"
+        # Check if running kernel starts with the installed version
+        if [[ "$running_kernel" != "${kernel_pkg}-"* ]]; then
             needs_reboot=true
-            reboot_reasons+=("kernel (running: $running_ver, installed: $pkg_ver)")
+            reboot_reasons+=("kernel (running: $running_kernel, installed: $kernel_pkg)")
         fi
     fi
 

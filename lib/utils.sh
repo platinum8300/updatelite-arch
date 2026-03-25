@@ -17,7 +17,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Script version
-VERSION="1.1.6"
+VERSION="1.1.7"
 
 # Tracking variables
 declare -g UPDATES_PACMAN=0
