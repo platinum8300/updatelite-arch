@@ -85,14 +85,17 @@ update_pacman() {
     echo -e "${BLUE}  → Syncing and updating...${RESET}"
     echo ""
 
-    # Execute pacman with real-time output, capturing hook messages for reboot detection
+    # Execute pacman with real-time output, capturing hook messages for reboot detection.
+    # script(1) creates a pseudo-TTY so pacman shows download progress bars (pacman 7.x
+    # suppresses them when stdout is a pipe), while still capturing output to the log.
     local pacman_exit
     if [[ -n "$ignore_flag" ]]; then
-        sudo pacman -Syyu --noconfirm --color always $ignore_flag 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
+        script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always $ignore_flag" "$PACMAN_OUTPUT_LOG"
+        pacman_exit=$?
     else
-        sudo pacman -Syyu --noconfirm --color always 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
+        script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always" "$PACMAN_OUTPUT_LOG"
+        pacman_exit=$?
     fi
-    pacman_exit=${PIPESTATUS[0]}
 
     # If failed, check for PGP error
     if [[ $pacman_exit -ne 0 ]]; then
@@ -103,11 +106,12 @@ update_pacman() {
 
             echo -e "${BLUE}  → Retrying update...${RESET}"
             if [[ -n "$ignore_flag" ]]; then
-                sudo pacman -Syyu --noconfirm --color always $ignore_flag 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
+                script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always $ignore_flag" "$PACMAN_OUTPUT_LOG"
+                pacman_exit=$?
             else
-                sudo pacman -Syyu --noconfirm --color always 2>&1 | tee -a "$PACMAN_OUTPUT_LOG"
+                script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always" "$PACMAN_OUTPUT_LOG"
+                pacman_exit=$?
             fi
-            pacman_exit=${PIPESTATUS[0]}
         fi
     fi
 

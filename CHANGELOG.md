@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2026-04-19
+
+### Fixed
+- Pacman download progress bars no longer visible when running updatelite (pacman 7.x)
+  - Pacman 7.x is stricter about TTY detection: it suppresses progress bars when stdout
+    is a pipe, which broke real-time output when capturing via `tee`
+  - Replaced `| tee` with `script(1)` to create a pseudo-TTY, restoring percentage
+    display and live progress while still capturing output for reboot detection
+
 ## [1.1.5] - 2026-03-12
 
 ### Added
