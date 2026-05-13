@@ -44,7 +44,7 @@ declare -g LOG_DIR="${LOG_DIR:-$HOME/logs/updatelite}"
 declare -g ENABLE_PHRASES="${ENABLE_PHRASES:-true}"
 declare -g ENABLE_COLORS="${ENABLE_COLORS:-true}"
 
-declare -g CRITICAL_PACKAGES="${CRITICAL_PACKAGES:-linux systemd glibc gcc-libs linux-firmware mesa fwupd}"
+declare -g CRITICAL_PACKAGES="${CRITICAL_PACKAGES:-linux linux-cachyos linux-cachyos-bore linux-cachyos-lts linux-zen linux-lts systemd glibc gcc-libs linux-firmware mesa fwupd intel-ucode amd-ucode nvidia nvidia-utils nvidia-open dkms}"
 
 # Config file location
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/updatelite"
@@ -140,7 +140,7 @@ ENABLE_PHRASES=true
 ENABLE_COLORS=true
 
 # Critical packages that require reboot (space-separated)
-CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa fwupd
+CRITICAL_PACKAGES=linux linux-cachyos linux-cachyos-bore linux-cachyos-lts linux-zen linux-lts systemd glibc gcc-libs linux-firmware mesa fwupd intel-ucode amd-ucode nvidia nvidia-utils nvidia-open dkms
 CONFIGEOF
 
     echo "Created default config at $CONFIG_FILE"
