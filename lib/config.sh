@@ -107,7 +107,7 @@ ENABLE_FLATPAK=true
 ENABLE_DOCKER=false
 ENABLE_FIRMWARE=true
 
-# AUR helper (paru/yay/auto)
+# AUR helper (paru/yay/shelly/auto)
 AUR_HELPER=auto
 
 # Packages to skip during AUR update (space-separated)
@@ -169,6 +169,11 @@ detect_kernel() {
 }
 
 # Detect AUR helper
+#
+# Auto-detection prefers the classic pacman-style helpers (paru, yay) to keep
+# behavior stable for existing setups, and falls back to Shelly last. On fresh
+# CachyOS installs (June 2026+) paru is no longer shipped, so the Shelly fallback
+# makes auto-detection work out of the box there without changing existing setups.
 detect_aur_helper() {
     if [[ "$AUR_HELPER" != "auto" ]]; then
         if command -v "$AUR_HELPER" &>/dev/null; then
@@ -181,7 +186,19 @@ detect_aur_helper() {
         echo "paru"
     elif command -v yay &>/dev/null; then
         echo "yay"
+    elif command -v shelly &>/dev/null; then
+        echo "shelly"
     else
         echo "none"
     fi
+}
+
+# Classify an AUR helper by its command-line dialect.
+# Returns "shelly" for Shelly (verb-based CLI talking to libalpm directly),
+# or "pacman" for paru/yay (pacman-flag compatible wrappers).
+aur_helper_kind() {
+    case "$1" in
+        shelly) echo "shelly" ;;
+        *)      echo "pacman" ;;
+    esac
 }

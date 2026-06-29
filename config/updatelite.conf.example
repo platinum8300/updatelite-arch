@@ -13,7 +13,7 @@
 # System packages via pacman
 ENABLE_PACMAN=true
 
-# AUR packages via paru/yay
+# AUR packages via paru/yay/shelly
 ENABLE_AUR=true
 
 # Flatpak applications
@@ -29,7 +29,8 @@ ENABLE_FIRMWARE=true
 # AUR SETTINGS
 # ─────────────────────────────────────────────────────────────
 
-# Preferred AUR helper: paru, yay, or auto (detect)
+# Preferred AUR helper: paru, yay, shelly, or auto (detect)
+# auto prefers paru, then yay, then shelly (the CachyOS default since 2026)
 AUR_HELPER=auto
 
 # Packages to skip during AUR updates (space-separated)

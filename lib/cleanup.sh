@@ -178,10 +178,16 @@ cleanup_cache() {
     # Clean with pacman
     yes | sudo pacman -Sc >/dev/null 2>&1 || true
 
-    # Clean paru cache if available
-    if has_command paru; then
-        yes | paru -Sc >/dev/null 2>&1 || true
-    fi
+    # Clean the AUR helper's own cache. Pacman-style helpers (paru/yay) keep a
+    # build/clone cache that -Sc prunes; Shelly builds in ephemeral temp dirs,
+    # so the pacman -Sc above already covers everything it would leave behind.
+    local aur_helper
+    aur_helper=$(detect_aur_helper)
+    case "$aur_helper" in
+        paru|yay)
+            yes | "$aur_helper" -Sc >/dev/null 2>&1 || true
+            ;;
+    esac
 
     # Get cache size after
     local cache_after

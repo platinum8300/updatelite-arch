@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-29
+
+### Added
+- Shelly support as an AUR backend, alongside paru and yay. `AUR_HELPER` now
+  accepts `shelly`, and auto-detection falls back to Shelly when neither paru
+  nor yay is present — which is the out-of-the-box case on CachyOS installs from
+  June 2026 onward, where paru is no longer shipped by default.
+  - The AUR module was refactored into an orchestrator plus per-dialect backends:
+    `update_aur_pacman` (paru/yay, unchanged behavior) and `update_aur_shelly`.
+  - The Shelly backend mirrors the existing strategy (list pending, bulk upgrade,
+    per-package fallback, then diff to score results) using Shelly's own verbs
+    (`aur list-updates`, `aur upgrade`, `aur update`) and parses its JSON output
+    for reliable, locale-independent results.
+  - New `aur_helper_kind` helper classifies a helper as `shelly` or `pacman`.
+- Package cache cleanup is now AUR-helper aware: it prunes the paru/yay build
+  cache via `-Sc`, and skips that step for Shelly (which builds in ephemeral
+  temporary directories, already covered by `pacman -Sc`).
+
 ## [1.1.8] - 2026-04-19
 
 ### Fixed

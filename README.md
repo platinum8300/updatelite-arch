@@ -10,7 +10,7 @@ A modular, user-friendly script that handles system updates, cleanup, and mainte
 
 ## Features
 
-- **Unified Updates**: Pacman, AUR (paru/yay), Flatpak, and Docker
+- **Unified Updates**: Pacman, AUR (paru/yay/shelly), Flatpak, and Docker
 - **Smart Cleanup**: Orphan packages, cache, and journal management
 - **Service Monitoring**: Detect failed systemd services
 - **Reboot Detection**: Know when critical packages require a restart
@@ -59,7 +59,7 @@ updatelite --create-config
 | `ENABLE_AUR` | true | Update AUR packages |
 | `ENABLE_FLATPAK` | true | Update Flatpak apps |
 | `ENABLE_DOCKER` | false | Update Docker images |
-| `AUR_HELPER` | auto | paru, yay, or auto-detect |
+| `AUR_HELPER` | auto | paru, yay, shelly, or auto-detect |
 | `CLEANUP_ORPHANS` | true | Remove orphan packages |
 | `CLEANUP_CACHE` | true | Clean package cache |
 | `JOURNAL_VACUUM_DAYS` | 7 | Keep journal for N days |
@@ -75,7 +75,7 @@ See [config/updatelite.conf.example](config/updatelite.conf.example) for all opt
 
 **Recommended:**
 - pacman-contrib (for cache cleanup)
-- paru or yay (for AUR support)
+- paru, yay, or shelly (for AUR support)
 
 ## CLI Options
 

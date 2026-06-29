@@ -15,6 +15,9 @@ source "$PROJECT_DIR/lib/aur.sh"
 # Test 1: Function exists
 test_function_exists() {
     type update_aur &>/dev/null || exit 1
+    type update_aur_pacman &>/dev/null || exit 1
+    type update_aur_shelly &>/dev/null || exit 1
+    type aur_helper_kind &>/dev/null || exit 1
     type list_aur_packages &>/dev/null || exit 1
 }
 
@@ -28,13 +31,21 @@ test_module_disable() {
 test_helper_detection() {
     local helper
     helper=$(detect_aur_helper)
-    # Should return paru, yay, or none
-    [[ "$helper" =~ ^(paru|yay|none)$ ]] || exit 1
+    # Should return paru, yay, shelly, or none
+    [[ "$helper" =~ ^(paru|yay|shelly|none)$ ]] || exit 1
+}
+
+# Test 4: Helper dialect classification
+test_helper_kind() {
+    [[ "$(aur_helper_kind shelly)" == "shelly" ]] || exit 1
+    [[ "$(aur_helper_kind paru)" == "pacman" ]] || exit 1
+    [[ "$(aur_helper_kind yay)" == "pacman" ]] || exit 1
 }
 
 # Run tests
 test_function_exists
 test_module_disable
 test_helper_detection
+test_helper_kind
 
 exit 0
