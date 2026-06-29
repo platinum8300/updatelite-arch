@@ -107,7 +107,7 @@ ENABLE_FLATPAK=true
 ENABLE_DOCKER=false
 ENABLE_FIRMWARE=true
 
-# AUR helper (paru/yay/shelly/auto)
+# AUR helper (paru/yay/shelly/auto; auto prefers shelly, then paru, then yay)
 AUR_HELPER=auto
 
 # Packages to skip during AUR update (space-separated)
@@ -170,10 +170,10 @@ detect_kernel() {
 
 # Detect AUR helper
 #
-# Auto-detection prefers the classic pacman-style helpers (paru, yay) to keep
-# behavior stable for existing setups, and falls back to Shelly last. On fresh
-# CachyOS installs (June 2026+) paru is no longer shipped, so the Shelly fallback
-# makes auto-detection work out of the box there without changing existing setups.
+# Auto-detection prefers Shelly, then paru, then yay. Shelly is the native
+# package manager on CachyOS (the primary target) since 2026 and is shipped by
+# default there, so it leads; paru and yay remain as fallbacks for systems that
+# don't have Shelly. Set AUR_HELPER explicitly to override this order.
 detect_aur_helper() {
     if [[ "$AUR_HELPER" != "auto" ]]; then
         if command -v "$AUR_HELPER" &>/dev/null; then
@@ -182,12 +182,12 @@ detect_aur_helper() {
         fi
     fi
 
-    if command -v paru &>/dev/null; then
+    if command -v shelly &>/dev/null; then
+        echo "shelly"
+    elif command -v paru &>/dev/null; then
         echo "paru"
     elif command -v yay &>/dev/null; then
         echo "yay"
-    elif command -v shelly &>/dev/null; then
-        echo "shelly"
     else
         echo "none"
     fi

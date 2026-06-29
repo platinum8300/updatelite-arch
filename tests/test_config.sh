@@ -28,7 +28,7 @@ test_detect_distro() {
 test_detect_aur_helper() {
     local helper
     helper=$(detect_aur_helper)
-    [[ "$helper" == "paru" || "$helper" == "yay" || "$helper" == "none" ]] || exit 1
+    [[ "$helper" == "shelly" || "$helper" == "paru" || "$helper" == "yay" || "$helper" == "none" ]] || exit 1
 }
 
 # Run tests

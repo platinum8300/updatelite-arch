@@ -30,7 +30,7 @@ ENABLE_FIRMWARE=true
 # ─────────────────────────────────────────────────────────────
 
 # Preferred AUR helper: paru, yay, shelly, or auto (detect)
-# auto prefers paru, then yay, then shelly (the CachyOS default since 2026)
+# auto prefers shelly, then paru, then yay (shelly is the CachyOS default since 2026)
 AUR_HELPER=auto
 
 # Packages to skip during AUR updates (space-separated)
