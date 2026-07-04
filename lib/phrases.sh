@@ -38,7 +38,6 @@ PHRASES=(
 
     # Programmer humor
     "99 little bugs in the code, 99 little bugs... patch one down, 127 bugs in the code"
-    "Works on my machine. Certified."
     "git commit -m 'fixed it' (narrator: he didn't fix it)"
     "Documentation is like sex: when it's good, it's great. When it's bad, better than nothing."
     "// TODO: write better code (added 3 years ago)"
@@ -89,12 +88,4 @@ get_random_phrase() {
     local count=${#PHRASES[@]}
     local index=$((RANDOM % count))
     echo "${PHRASES[$index]}"
-}
-
-# Add custom phrase (for future use)
-add_custom_phrase() {
-    local phrase="$1"
-    if [[ -n "$phrase" ]]; then
-        PHRASES+=("$phrase")
-    fi
 }

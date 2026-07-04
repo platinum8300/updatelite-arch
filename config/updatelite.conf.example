@@ -80,3 +80,13 @@ ENABLE_COLORS=true
 # Packages that require a reboot when updated (space-separated)
 # When these are updated, you'll be notified to reboot
 CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa nvidia fwupd
+
+# ─────────────────────────────────────────────────────────────
+# DEPENDENCY HOLDS
+# ─────────────────────────────────────────────────────────────
+
+# Hold back packages whose pinned dependency version does not match the
+# installed one ("package:dependency" pairs, space-separated). Useful for
+# kernel+driver bundles that pin an exact driver version.
+# Example: DEP_MISMATCH_HOLDS=my-kernel-nvidia-open:nvidia-utils
+DEP_MISMATCH_HOLDS=

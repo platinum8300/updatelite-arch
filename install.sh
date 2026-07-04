@@ -200,11 +200,13 @@ verify_install() {
     if [[ -x "$INSTALL_BIN/updatelite" ]]; then
         print_success "updatelite is installed and executable"
 
-        # Try to run version check
-        if "$INSTALL_BIN/updatelite" --version &>/dev/null; then
-            local version
-            version=$("$INSTALL_BIN/updatelite" --version | head -1)
-            print_success "Version: $version"
+        # Try to run version check. Capture the full output and take the
+        # first line in-shell: piping to head -1 makes updatelite die with
+        # SIGPIPE, which pipefail+errexit turns into a silent installer abort.
+        local version=""
+        version=$("$INSTALL_BIN/updatelite" --version 2>/dev/null) || version=""
+        if [[ -n "$version" ]]; then
+            print_success "Version: ${version%%$'\n'*}"
         fi
     else
         print_error "Installation verification failed"

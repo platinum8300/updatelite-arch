@@ -17,11 +17,10 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Script version
-VERSION="1.2.1"
+VERSION="1.3.0"
 
 # Tracking variables
 declare -g UPDATES_PACMAN=0
-declare -g UPDATES_PACMAN_INSTALLED=0
 declare -g UPDATES_AUR=0
 declare -g UPDATES_AUR_FAILED=0
 declare -g UPDATES_FLATPAK=0
@@ -43,7 +42,6 @@ declare -ga FLATPAK_PACKAGES=()
 # Initialize tracking
 init_tracking() {
     UPDATES_PACMAN=0
-    UPDATES_PACMAN_INSTALLED=0
     UPDATES_AUR=0
     UPDATES_AUR_FAILED=0
     UPDATES_FLATPAK=0
@@ -89,7 +87,37 @@ check_deps() {
 
     # Check for gum (optional but recommended)
     if ! command -v gum &>/dev/null; then
-        echo -e "${YELLOW}  ⚠️  gum not found. Install for better experience: sudo pacman -S gum${RESET}"
+        echo -e "${YELLOW}  ! gum not found. Install for better experience: sudo pacman -S gum${RESET}"
+    fi
+}
+
+# Keep sudo alive for the duration of the run. Long AUR builds can exceed
+# the sudo timeout, stalling an unattended run to ask for a password again.
+declare -g SUDO_KEEPALIVE_PID=""
+
+start_sudo_keepalive() {
+    if ! sudo -v; then
+        echo -e "${RED}ERROR: sudo authentication failed${RESET}"
+        exit 1
+    fi
+    (
+        while true; do
+            sleep 60
+            kill -0 "$$" 2>/dev/null || exit
+            sudo -n true 2>/dev/null || exit
+        done
+    ) &
+    SUDO_KEEPALIVE_PID=$!
+}
+
+# Release resources on exit (sudo keepalive, pacman output temp log).
+# Registered as an EXIT trap so cleanup also happens on early failures.
+cleanup_on_exit() {
+    if [[ -n "$SUDO_KEEPALIVE_PID" ]]; then
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    fi
+    if [[ -n "${PACMAN_OUTPUT_LOG:-}" && -f "$PACMAN_OUTPUT_LOG" ]]; then
+        rm -f "$PACMAN_OUTPUT_LOG"
     fi
 }
 

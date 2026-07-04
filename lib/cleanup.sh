@@ -148,7 +148,11 @@ cleanup_orphans() {
     echo ""
 
     echo -e "${YELLOW}    → Removing orphans...${RESET}"
-    if sudo pacman -Rns $orphans --noconfirm 2>&1 | grep -v "^::" || true; then
+    # Stream pacman's output (warnings like .pacsave notices stay visible)
+    # while capturing pacman's own exit code via PIPESTATUS.
+    local rns_exit=0
+    sudo pacman -Rns $orphans --noconfirm 2>&1 | grep -v "^::" || rns_exit=${PIPESTATUS[0]}
+    if [[ $rns_exit -eq 0 ]]; then
         ORPHANS_REMOVED=$orphan_count
         echo -e "${GREEN}    ✓ Orphans removed${RESET}"
     else

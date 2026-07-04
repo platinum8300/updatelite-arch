@@ -74,7 +74,7 @@ See [config/updatelite.conf.example](config/updatelite.conf.example) for all opt
 - sudo
 
 **Recommended:**
-- pacman-contrib (for cache cleanup)
+- pacman-contrib (provides `checkupdates`, used by `--dry-run`)
 - paru, yay, or shelly (for AUR support)
 
 ## CLI Options

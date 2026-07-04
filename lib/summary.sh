@@ -18,20 +18,20 @@
 
 # Show header (clean, minimalist style)
 show_header() {
-    local phrase
-    phrase=$(get_random_phrase)
-    local distro
-    distro=$(detect_distro)
+    local distro_name
+    distro_name=$(distro_display_name)
 
     clear
 
     echo ""
     echo -e "${DIM}───────────────────────────────────────────────────────────${RESET}"
     echo ""
-    echo -e "    ${BOLD}${GREEN}update${RESET}${BOLD}${MAGENTA}LITE${RESET}  ${DIM}·${RESET}  ${CYAN}${distro^} Edition${RESET}"
+    echo -e "    ${BOLD}${GREEN}update${RESET}${BOLD}${MAGENTA}LITE${RESET}  ${DIM}·${RESET}  ${CYAN}${distro_name} Edition${RESET}"
     echo ""
     echo -e "    ${DIM}📅${RESET} $(date '+%d/%m/%Y %H:%M')"
-    echo -e "    ${DIM}📝${RESET} ${phrase}"
+    if [[ "${ENABLE_PHRASES:-true}" == "true" ]]; then
+        echo -e "    ${DIM}📝${RESET} $(get_random_phrase)"
+    fi
     echo ""
     echo -e "${DIM}───────────────────────────────────────────────────────────${RESET}"
     echo ""
@@ -185,18 +185,20 @@ show_summary() {
     echo -e "  💿 DISK:   ${disk_bar}  ${disk_info}"
     echo ""
     echo -e "  🔄 Kernel: ${kernel}"
-    echo -e "  ⏱️  Time:   ${elapsed}"
+    echo -e "  ⏳ Time:   ${elapsed}"
     echo ""
 }
 
 # Show footer (matches original style)
 show_footer() {
-    local phrase
-    phrase=$(get_random_phrase)
+    local phrase=""
+    if [[ "${ENABLE_PHRASES:-true}" == "true" ]]; then
+        phrase=$(get_random_phrase)
+    fi
 
     echo -e "${DIM}───────────────────────────────────────────────────────────${RESET}"
     echo ""
-    echo -e "  ${BOLD}${GREEN}✓ COMPLETED${RESET}  ${phrase}"
+    echo -e "  ${BOLD}${GREEN}✓ COMPLETED${RESET}${phrase:+  ${phrase}}"
     echo ""
     echo -e "${DIM}───────────────────────────────────────────────────────────${RESET}"
     echo ""

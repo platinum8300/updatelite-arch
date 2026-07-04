@@ -18,13 +18,13 @@
 
 # Check critical services status
 check_services() {
-    show_section "SERVICE VERIFICATION" "${RED}" "⚙️"
+    show_section "SERVICE VERIFICATION" "${RED}" "🔧"
 
     local failed_services
     failed_services=$(systemctl --failed --no-pager --no-legend 2>/dev/null)
 
     if [[ -n "$failed_services" ]]; then
-        echo -e "${RED}  ⚠️  FAILED SERVICES DETECTED:${RESET}"
+        echo -e "${RED}  ! FAILED SERVICES DETECTED:${RESET}"
         echo ""
         while IFS= read -r line; do
             echo -e "${RED}    • ${line}${RESET}"

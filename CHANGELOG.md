@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-07-03
+
+### Added
+- `--dry-run` (`-n`): preview pending pacman/AUR/Flatpak/firmware updates,
+  orphan packages and cache/journal sizes without changing anything. Uses
+  `checkupdates` (pacman-contrib) when available for an accurate repo preview.
+- `--no-cleanup` and `--no-services` flags to skip those phases.
+- `AUR_SKIP_PACKAGES` is now honored: matching packages are excluded from AUR
+  updates (`--ignore` for paru/yay, per-package updates for Shelly) and shown
+  as skipped instead of failed.
+- `ENABLE_PHRASES=false` now actually hides the header/footer phrases.
+- sudo keepalive: authentication is requested once at the start and refreshed
+  in the background, so long AUR builds no longer stall asking for a password.
+- Shell completions (bash/zsh/fish) updated with the new flags.
+- `DEP_MISMATCH_HOLDS` config option: hold back packages whose pinned
+  dependency version does not match the installed one ("package:dependency"
+  pairs). Replaces a hardcoded kernel/driver check and is empty by default.
+
+### Fixed
+- A pacman or Docker failure no longer aborts the whole run: exit codes are
+  captured safely under `set -e`, so the PGP recovery path, the summary and
+  the reboot check now run even after an update error.
+- PGP error detection reads the already-captured pacman output instead of
+  re-running a full `pacman -Syyu` just to inspect the error.
+- Orphan removal errors are reported again (the success branch was
+  unconditional) and no longer count removed orphans on failure.
+- Flatpak updates are no longer capped at 10 entries in tracking and summary.
+- `chaotic-keyring` is only reinstalled during PGP recovery when the
+  Chaotic-AUR repo is actually configured.
+- The pacman output temp file is removed on every exit path via an EXIT trap.
+- Installer no longer aborts silently during version verification (a SIGPIPE
+  from piping --version into head, fatal under pipefail).
+
+### Changed
+- Distro detection now reads /etc/os-release, so any Arch derivative (Garuda,
+  EndeavourOS, ...) shows its real name in the header and in --version;
+  previously only CachyOS and Arch were recognized.
+- Reboot notice restyled to match the rest of the interface (single-line
+  separators instead of a double-line box).
+- Warning markers use a fixed-width `!` and the services/summary icons no
+  longer use variation-selector emojis, fixing column alignment in some
+  terminals.
+- Removed a duplicate phrase and the unused `add_custom_phrase` helper.
+
 ## [1.2.1] - 2026-06-29
 
 ### Changed

@@ -30,8 +30,10 @@ check_reboot_required() {
     # Honors the distro's own reboot policy (e.g. CachyOS needs-reboot hook).
     # Strip ANSI color codes before matching (pacman --color always embeds them).
     if [[ -n "${PACMAN_OUTPUT_LOG:-}" && -f "$PACMAN_OUTPUT_LOG" ]]; then
-        if sed 's/\x1b\[[0-9;]*m//g' "$PACMAN_OUTPUT_LOG" \
-            | grep -qiE "reboot[^\\n]{0,40}(recommended|required|needed)"; then
+        # Process substitution instead of a pipe: a pipefail SIGPIPE from sed
+        # must not mask a match when grep -q exits early.
+        if grep -qiE "reboot[^\\n]{0,40}(recommended|required|needed)" \
+            < <(sed 's/\x1b\[[0-9;]*m//g' "$PACMAN_OUTPUT_LOG"); then
             needs_reboot=true
             reboot_reasons+=("pacman hook flagged reboot")
         fi
@@ -109,9 +111,9 @@ check_reboot_required() {
     # Show reboot notice or confirmation
     if [[ "$needs_reboot" == "true" ]]; then
         echo ""
-        echo -e "${BOLD}${YELLOW}╔════════════════════════════════════════════════════════ ${RESET}"
-        echo -e "${BOLD}${YELLOW}║            ⚠️  REBOOT RECOMMENDED ⚠️                    ${RESET}"
-        echo -e "${BOLD}${YELLOW}╚════════════════════════════════════════════════════════ ${RESET}"
+        echo -e "${DIM}───────────────────────────────────────────────────────────${RESET}"
+        echo ""
+        echo -e "  ${BOLD}${YELLOW}! REBOOT RECOMMENDED${RESET}"
         echo ""
 
         if [[ ${#reboot_reasons[@]} -gt 0 ]]; then

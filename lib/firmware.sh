@@ -18,6 +18,18 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+# True when fwupdmgr get-updates indicates there is nothing to apply.
+# Exit code 2 is fwupdmgr's documented "no updates available"; the message
+# match covers wordings across locales. Shared with the dry-run preview so
+# both paths classify fwupdmgr output identically.
+fwupd_no_updates() {
+    local exit_code="$1" output="$2"
+    if [[ $exit_code -eq 2 || -z "$output" ]]; then
+        return 0
+    fi
+    grep -qiE "no upgrades|no updates|no hay|ninguna actualiz" <<< "$output"
+}
+
 # Update firmware via fwupd
 update_firmware() {
     if [[ "$ENABLE_FIRMWARE" != "true" ]]; then
@@ -43,9 +55,7 @@ update_firmware() {
     local check_exit
     updates=$(fwupdmgr get-updates 2>&1) && check_exit=0 || check_exit=$?
 
-    # Exit code 2 means "no updates available" in fwupdmgr
-    # Also check for common "no updates" messages (multilingual)
-    if [[ $check_exit -eq 2 ]] || [[ -z "$updates" ]] || echo "$updates" | grep -qiE "no upgrades|no updates|no hay|ninguna actualización"; then
+    if fwupd_no_updates "$check_exit" "$updates"; then
         echo -e "${GREEN}  ✓ All firmware is up to date${RESET}"
         end_section
         return 0
@@ -74,7 +84,7 @@ update_firmware() {
         # Exit code 2 = nothing to do
         echo -e "${GREEN}  ✓ No firmware updates needed${RESET}"
     else
-        echo -e "${YELLOW}  ⚠️  Firmware update finished (may require reboot)${RESET}"
+        echo -e "${YELLOW}  ! Firmware update finished (may require reboot)${RESET}"
         UPDATES_FIRMWARE=1
     fi
 

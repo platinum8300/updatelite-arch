@@ -50,11 +50,15 @@ source "$LIB_DIR/firmware.sh"
 source "$LIB_DIR/cleanup.sh"
 source "$LIB_DIR/services.sh"
 source "$LIB_DIR/reboot.sh"
+source "$LIB_DIR/dryrun.sh"
 
 # CLI options
 SHOW_VERSION=false
 SHOW_HELP=false
 CREATE_CONFIG=false
+DRY_RUN=false
+NO_CLEANUP=false
+NO_SERVICES=false
 
 # Parse arguments
 parse_args() {
@@ -66,6 +70,18 @@ parse_args() {
                 ;;
             -h|--help)
                 SHOW_HELP=true
+                shift
+                ;;
+            -n|--dry-run)
+                DRY_RUN=true
+                shift
+                ;;
+            --no-cleanup)
+                NO_CLEANUP=true
+                shift
+                ;;
+            --no-services)
+                NO_SERVICES=true
                 shift
                 ;;
             --create-config)
@@ -89,6 +105,9 @@ Usage: updatelite [OPTIONS]
 updateLITE Arch Edition - System maintenance for Arch Linux
 
 Options:
+  -n, --dry-run      Preview changes without applying
+  --no-cleanup       Skip system cleanup phase
+  --no-services      Skip service status check
   --create-config    Create default configuration file
   -v, --version      Show version information
   -h, --help         Show this help message
@@ -98,6 +117,7 @@ Configuration:
 
 Examples:
   updatelite              Run full system maintenance
+  updatelite --dry-run    Preview pending updates and cleanup
   updatelite --version    Show version info
 
 For more information, visit: https://github.com/platinum8300/updatelite-arch
@@ -107,7 +127,7 @@ EOF
 # Show version
 show_version() {
     echo "updateLITE Arch Edition v${VERSION}"
-    echo "System: $(detect_distro) ($(detect_kernel))"
+    echo "System: $(distro_display_name) ($(detect_kernel))"
     echo "AUR helper: $(detect_aur_helper)"
 }
 
@@ -144,9 +164,19 @@ main() {
 
     # Initialize tracking
     init_tracking
+    trap cleanup_on_exit EXIT
 
     # Show header
     show_header
+
+    # Dry run: preview only, no sudo needed, nothing is modified
+    if [[ "$DRY_RUN" == "true" ]]; then
+        run_dry_run
+        exit 0
+    fi
+
+    # Authenticate once and keep sudo alive for the whole run
+    start_sudo_keepalive
 
     # Run updates
     update_pacman
@@ -156,10 +186,14 @@ main() {
     update_firmware
 
     # Cleanup
-    system_cleanup
+    if [[ "$NO_CLEANUP" != "true" ]]; then
+        system_cleanup
+    fi
 
     # Verifications
-    check_services
+    if [[ "$NO_SERVICES" != "true" ]]; then
+        check_services
+    fi
     check_reboot_required
 
     # Summary

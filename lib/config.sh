@@ -46,6 +46,10 @@ declare -g ENABLE_COLORS="${ENABLE_COLORS:-true}"
 
 declare -g CRITICAL_PACKAGES="${CRITICAL_PACKAGES:-linux linux-cachyos linux-cachyos-bore linux-cachyos-lts linux-zen linux-lts systemd glibc gcc-libs linux-firmware mesa fwupd intel-ucode amd-ucode nvidia nvidia-utils nvidia-open dkms}"
 
+# "package:dependency" pairs to hold back when the package pins a dependency
+# version that no longer matches the installed one (empty by default)
+declare -g DEP_MISMATCH_HOLDS="${DEP_MISMATCH_HOLDS:-}"
+
 # Config file location
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/updatelite"
 CONFIG_FILE="$CONFIG_DIR/config"
@@ -81,7 +85,7 @@ load_config() {
             USER_CACHE_MAX_DAYS|USER_CACHE_MIN_SIZE_MB|\
             ENABLE_LOGGING|LOG_DIR|\
             ENABLE_PHRASES|ENABLE_COLORS|\
-            CRITICAL_PACKAGES)
+            CRITICAL_PACKAGES|DEP_MISMATCH_HOLDS)
                 declare -g "$key=$value"
                 ;;
         esac
@@ -141,19 +145,51 @@ ENABLE_COLORS=true
 
 # Critical packages that require reboot (space-separated)
 CRITICAL_PACKAGES=linux linux-cachyos linux-cachyos-bore linux-cachyos-lts linux-zen linux-lts systemd glibc gcc-libs linux-firmware mesa fwupd intel-ucode amd-ucode nvidia nvidia-utils nvidia-open dkms
+
+# Hold back packages whose pinned dependency version does not match the
+# installed one ("package:dependency" pairs, space-separated). Useful for
+# kernel+driver bundles that pin an exact driver version.
+# Example: DEP_MISMATCH_HOLDS=my-kernel-nvidia-open:nvidia-utils
+DEP_MISMATCH_HOLDS=
 CONFIGEOF
 
     echo "Created default config at $CONFIG_FILE"
 }
 
-# Detect distribution
+# Detect distribution id (lowercase: cachyos, arch, garuda, endeavouros, ...)
+# Reads ID from os-release so any Arch derivative identifies itself; the
+# release-file checks remain as a fallback for minimal environments.
 detect_distro() {
-    if [[ -f /etc/cachyos-release ]]; then
-        echo "cachyos"
-    elif [[ -f /etc/arch-release ]]; then
-        echo "arch"
+    local id=""
+    if [[ -r /etc/os-release ]]; then
+        id=$(. /etc/os-release 2>/dev/null && echo "${ID:-}")
+    fi
+    if [[ -z "$id" ]]; then
+        if [[ -f /etc/cachyos-release ]]; then
+            id="cachyos"
+        elif [[ -f /etc/arch-release ]]; then
+            id="arch"
+        fi
+    fi
+    echo "${id:-unknown}"
+}
+
+# Human-readable distro name, shared by the header and --version output.
+# Prefers NAME from os-release so every distro shows its own branding
+# (CachyOS, Garuda, EndeavourOS, ...); a trailing "Linux" is dropped for a
+# cleaner header ("Arch Linux" -> "Arch").
+distro_display_name() {
+    local name=""
+    if [[ -r /etc/os-release ]]; then
+        name=$(. /etc/os-release 2>/dev/null && echo "${NAME:-}")
+    fi
+    name="${name% Linux}"
+    if [[ -n "$name" ]]; then
+        echo "$name"
     else
-        echo "unknown"
+        local distro
+        distro=$(detect_distro)
+        echo "${distro^}"
     fi
 }
 

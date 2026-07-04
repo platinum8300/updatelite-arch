@@ -40,7 +40,7 @@ update_flatpak() {
         while IFS= read -r line; do
             echo "    • $line"
             FLATPAK_PACKAGES+=("$line")
-        done <<< "$(echo "$flatpak_pending" | head -10)"
+        done <<< "$flatpak_pending"
         echo ""
 
         # Update showing all warnings
@@ -56,7 +56,7 @@ update_flatpak() {
         if [[ $flatpak_exit -eq 0 ]]; then
             echo -e "${GREEN}  ✓ Flatpak update completed${RESET}"
         else
-            echo -e "${YELLOW}  ⚠️  Some Flatpak updates may have failed${RESET}"
+            echo -e "${YELLOW}  ! Some Flatpak updates may have failed${RESET}"
         fi
     else
         echo -e "${GREEN}  ✓ All Flatpak apps are up to date${RESET}"

@@ -16,41 +16,79 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-# Detect packages with problematic dependencies
+# Detect installed packages whose pinned dependency version no longer matches
+# the installed dependency, so the update would fail on them. Driven entirely
+# by the DEP_MISMATCH_HOLDS config option ("package:dependency" pairs); empty
+# by default, so nothing here is tied to a particular machine.
 detect_broken_deps() {
-    local broken_pkgs=""
+    local broken_pkgs=() pair pkg dep needed current
 
-    if pacman -Qi linux-cachyos-bore-nvidia-open &>/dev/null; then
-        local needed_nvidia
-        needed_nvidia=$(pacman -Si linux-cachyos-bore-nvidia-open 2>/dev/null | grep -oP "nvidia-utils=\K[0-9.]+" | head -1)
-        local current_nvidia
-        current_nvidia=$(pacman -Q nvidia-utils 2>/dev/null | awk '{print $2}' | cut -d'-' -f1)
+    for pair in ${DEP_MISMATCH_HOLDS:-}; do
+        pkg="${pair%%:*}"
+        dep="${pair##*:}"
+        [[ -n "$pkg" && -n "$dep" && "$pkg" != "$pair" ]] || continue
+        pacman -Qi "$pkg" &>/dev/null || continue
 
-        if [[ -n "$needed_nvidia" && "$needed_nvidia" != "$current_nvidia" ]]; then
-            broken_pkgs="linux-cachyos-bore-nvidia-open"
+        needed=$(pacman -Si "$pkg" 2>/dev/null | grep -oP "${dep}=\K[0-9.]+" | head -1 || true)
+        current=$(pacman -Q "$dep" 2>/dev/null | awk '{print $2}' | cut -d'-' -f1 || true)
+
+        if [[ -n "$needed" && -n "$current" && "$needed" != "$current" ]]; then
+            broken_pkgs+=("$pkg")
         fi
-    fi
-    echo "$broken_pkgs"
+    done
+    echo "${broken_pkgs[*]:-}"
 }
 
 # Handle PGP errors
 handle_pgp_error() {
-    echo -e "${YELLOW}  ⚠️  PGP signature error detected. Fixing...${RESET}"
+    echo -e "${YELLOW}  ! PGP signature error detected. Fixing...${RESET}"
 
+    # chaotic-keyring only exists when the Chaotic-AUR repo is configured
+    local keyrings=(archlinux-keyring)
+    pacman -Si chaotic-keyring &>/dev/null && keyrings+=(chaotic-keyring)
+
+    # Keyring install and db sync must succeed for the recovery to count;
+    # --refresh-keys often partially fails on flaky keyservers and is optional.
+    local fix_ok=true
     if has_command gum; then
         gum spin --spinner dot --title "Updating keyring..." -- \
-            sudo pacman -S --noconfirm archlinux-keyring chaotic-keyring 2>/dev/null
+            sudo pacman -S --noconfirm "${keyrings[@]}" 2>/dev/null || fix_ok=false
         gum spin --spinner dot --title "Refreshing PGP keys..." -- \
-            sudo pacman-key --refresh-keys 2>/dev/null
+            sudo pacman-key --refresh-keys 2>/dev/null || true
         gum spin --spinner dot --title "Syncing database..." -- \
-            sudo pacman -Sy 2>/dev/null
+            sudo pacman -Sy 2>/dev/null || fix_ok=false
     else
-        sudo pacman -S --noconfirm archlinux-keyring chaotic-keyring 2>/dev/null
-        sudo pacman-key --refresh-keys 2>/dev/null
-        sudo pacman -Sy 2>/dev/null
+        sudo pacman -S --noconfirm "${keyrings[@]}" 2>/dev/null || fix_ok=false
+        sudo pacman-key --refresh-keys 2>/dev/null || true
+        sudo pacman -Sy 2>/dev/null || fix_ok=false
     fi
 
-    echo -e "${GREEN}  ✓ Keyring updated${RESET}"
+    if [[ "$fix_ok" == "true" ]]; then
+        echo -e "${GREEN}  ✓ Keyring updated${RESET}"
+    else
+        echo -e "${YELLOW}  ! Keyring recovery incomplete (keyservers or mirrors unreachable?)${RESET}"
+    fi
+}
+
+# Run the full system upgrade under script(1), which allocates a pseudo-TTY so
+# pacman 7.x keeps its progress bars while the output is still captured to
+# PACMAN_OUTPUT_LOG for the reboot check. Returns pacman's exit code.
+run_pacman_syu() {
+    local extra_args="${1:-}"
+    local rc=0
+    script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always${extra_args:+ $extra_args}" "$PACMAN_OUTPUT_LOG" || rc=$?
+    return $rc
+}
+
+# Check the tail of the captured pacman output for a PGP failure. Only the
+# last lines are inspected so an incidental signature warning inside an
+# unrelated failure does not trigger keyring recovery. The process
+# substitution keeps a pipefail SIGPIPE from masking a match when grep -q
+# exits before sed finishes writing.
+pacman_log_has_pgp_error() {
+    [[ -f "${PACMAN_OUTPUT_LOG:-}" ]] || return 1
+    grep -qiE "PGP signature|unknown trust|firma PGP" \
+        < <(tail -n 30 "$PACMAN_OUTPUT_LOG" | sed 's/\x1b\[[0-9;]*m//g')
 }
 
 # Check for pacman database lock
@@ -78,41 +116,25 @@ update_pacman() {
     local ignore_flag=""
 
     if [[ -n "$ignore_packages" ]]; then
-        echo -e "${YELLOW}  ⚠️  Temporarily skipping: ${ignore_packages}${RESET}"
-        ignore_flag="--ignore=${ignore_packages//,/,}"
+        echo -e "${YELLOW}  ! Temporarily skipping: ${ignore_packages}${RESET}"
+        ignore_flag="--ignore=${ignore_packages// /,}"
     fi
 
     echo -e "${BLUE}  → Syncing and updating...${RESET}"
     echo ""
 
-    # Execute pacman with real-time output, capturing hook messages for reboot detection.
-    # script(1) creates a pseudo-TTY so pacman shows download progress bars (pacman 7.x
-    # suppresses them when stdout is a pipe), while still capturing output to the log.
-    local pacman_exit
-    if [[ -n "$ignore_flag" ]]; then
-        script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always $ignore_flag" "$PACMAN_OUTPUT_LOG"
-        pacman_exit=$?
-    else
-        script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always" "$PACMAN_OUTPUT_LOG"
-        pacman_exit=$?
-    fi
+    # Capture the exit code with || so errexit cannot abort the run here:
+    # a pacman failure must fall through to the PGP recovery path below.
+    local pacman_exit=0
+    run_pacman_syu "$ignore_flag" || pacman_exit=$?
 
-    # If failed, check for PGP error
-    if [[ $pacman_exit -ne 0 ]]; then
-        local last_error
-        last_error=$(sudo pacman -Syyu --noconfirm 2>&1 | tail -5)
-        if echo "$last_error" | grep -qE "PGP signature|unknown trust|firma PGP"; then
-            handle_pgp_error
+    # If failed, check the captured output for a PGP error and retry once.
+    if [[ $pacman_exit -ne 0 ]] && pacman_log_has_pgp_error; then
+        handle_pgp_error
 
-            echo -e "${BLUE}  → Retrying update...${RESET}"
-            if [[ -n "$ignore_flag" ]]; then
-                script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always $ignore_flag" "$PACMAN_OUTPUT_LOG"
-                pacman_exit=$?
-            else
-                script -q -f -e -a -c "sudo pacman -Syyu --noconfirm --color always" "$PACMAN_OUTPUT_LOG"
-                pacman_exit=$?
-            fi
-        fi
+        echo -e "${BLUE}  → Retrying update...${RESET}"
+        pacman_exit=0
+        run_pacman_syu "$ignore_flag" || pacman_exit=$?
     fi
 
     echo ""
@@ -120,7 +142,7 @@ update_pacman() {
         echo -e "${GREEN}  ✓ Pacman update completed${RESET}"
     else
         echo -e "${RED}  ✗ Pacman error. Continuing...${RESET}"
-        echo -e "${YELLOW}    Suggestion: sudo pacman -S archlinux-keyring chaotic-keyring${RESET}"
+        echo -e "${YELLOW}    Suggestion: sudo pacman -S archlinux-keyring${RESET}"
     fi
 
     # Capture updated/installed packages from log
