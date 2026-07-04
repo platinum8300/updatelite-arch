@@ -131,10 +131,16 @@ install_files() {
 }
 
 # Detect current shell
+# $SHELL can be missing or misleading (nested sessions, sandboxed tool
+# environments), so fall back to the login shell from the user database.
 detect_shell() {
-    local shell_name
-    shell_name=$(basename "$SHELL")
-    echo "$shell_name"
+    local shell_path="${SHELL:-}"
+
+    if [[ -z "$shell_path" ]] || ! command -v "$shell_path" &>/dev/null; then
+        shell_path=$(getent passwd "$(id -un)" | cut -d: -f7)
+    fi
+
+    basename "${shell_path:-sh}"
 }
 
 # Setup shell integration
