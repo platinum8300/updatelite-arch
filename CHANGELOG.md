@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-08-29
+
+### Fixed
+- Shelly backend: unattended runs no longer stall on Shelly's PKGBUILD review.
+  Shelly stops at `Proceed with update to <pkg>? (y/N)` whenever a PKGBUILD
+  changed or raised a security warning, and `--no-confirm` does not cover it:
+  there is no review-skipping flag on the AUR verbs, and Shelly's automatic
+  answer is to decline. An unattended run blocked on the prompt until someone
+  typed a key. The AUR verbs are now fed a stream of confirmations, matching
+  what the pacman-style backend already does with `--skipreview`. AUR build
+  scripts therefore run without a human reading them first, which is the
+  standing trade-off of an unattended AUR updater; use `AUR_SKIP_PACKAGES` to
+  hold a package back.
+- Shelly backend: single-package rebuilds use `update aur`, not `install aur`.
+  The 3.0 reorganisation moved the verbs but did not drop `aur update`, and
+  `install aur` takes a different path for an already-installed package.
+  `update aur` also rejects `--singlepane`, which was being passed to it.
+- Shelly backend: after a failed bulk upgrade, only the packages that are still
+  pending are retried. Shelly aborts the whole transaction at the first failure,
+  so the original list still names packages it had already installed; rebuilding
+  those cost several minutes each and reported them as fresh work.
+- Shelly backend: the individual retry no longer discards build output. A
+  rebuild can take many minutes per package, so a silent retry pass was
+  indistinguishable from a hang. Progress is now reported per package.
+- Shelly backend: the retry pass skips PKGBUILD `check()` functions, mirroring
+  the pacman backend's retry without test verification, so a failing test suite
+  no longer holds a package back.
+
 ## [1.3.2] - 2026-08-29
 
 ### Fixed

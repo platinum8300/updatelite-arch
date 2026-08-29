@@ -159,10 +159,11 @@ update_aur_pacman() {
     done
 }
 
-# Shelly 3.0 reorganised its CLI from "shelly aur <verb>" to "shelly <verb> aur",
-# and dropped the "aur update" verb: single-package rebuilds now go through
-# "install aur". Both dialects are still in the wild, so detect which one is
-# installed instead of hardcoding either.
+# Shelly 3.0 reorganised its CLI from "shelly aur <verb>" to "shelly <verb> aur".
+# The verbs themselves kept their names, so a single-package rebuild stays
+# "update aur" rather than "install aur", which is a fresh install and takes a
+# different path for an already-installed package. Both dialects are still in
+# the wild, so detect which one is installed instead of hardcoding either.
 SHELLY_DIALECT=""
 shelly_detect_dialect() {
     local helper="$1" version major
@@ -188,6 +189,22 @@ shelly_detect_dialect() {
     fi
 }
 
+# Answer stream for Shelly's PKGBUILD review prompt.
+#
+# Shelly stops at "Proceed with update to <pkg>? (y/N)" whenever a PKGBUILD
+# changed or raised a security warning, and --no-confirm does not cover it:
+# there is no review-skipping flag on the AUR verbs, and Shelly's automatic
+# answer is the safe one, N. Left alone the prompt blocks an unattended run
+# forever, and closing stdin turns it into a decline, so every package with a
+# changed PKGBUILD fails instead. Feeding it an endless stream of confirmations
+# is what keeps unattended runs unattended, and it matches what the pacman-style
+# backend already does with --skipreview. It also means AUR build scripts run
+# without a human reading them first, which is the standing trade-off of an
+# unattended AUR updater; AUR_SKIP_PACKAGES is the way to hold a package back.
+shelly_review_answers() {
+    yes
+}
+
 # Emit the subcommand words for an AUR action in the installed dialect, so
 # callers can splice them into a Shelly invocation.
 #   list-updates  pending updates as JSON
@@ -202,7 +219,7 @@ shelly_subcommand() {
         case "$action" in
             list-updates) echo "list-updates aur" ;;
             upgrade)      echo "upgrade aur" ;;
-            rebuild)      echo "install aur" ;;
+            rebuild)      echo "update aur" ;;
         esac
     else
         case "$action" in
@@ -211,6 +228,21 @@ shelly_subcommand() {
             rebuild)      echo "aur update" ;;
         esac
     fi
+}
+
+# Rebuild and reinstall one AUR package with Shelly. Extra Shelly flags may
+# follow the package name.
+#
+# Build output is deliberately left on the terminal. A Shelly rebuild can take
+# several minutes per package, so discarding its output makes an ordinary run
+# look like a freeze. Note that the rebuild verb takes no output-mode flag:
+# Shelly's configured OutputMode applies.
+shelly_rebuild_one() {
+    local helper="$1" pkg="$2"
+    shift 2
+
+    "$helper" $(shelly_subcommand "$helper" rebuild) --no-confirm "$@" "$pkg" \
+        < <(shelly_review_answers)
 }
 
 # List pending Shelly AUR updates as "name old -> new" lines, one per package,
@@ -304,27 +336,56 @@ update_aur_shelly() {
         # below would re-run packages that just succeeded.
         for entry in "${pending_list[@]}"; do
             pkg="${entry%% *}"
-            if "$helper" $(shelly_subcommand "$helper" rebuild) --no-confirm --singlepane "$pkg"; then
+            if shelly_rebuild_one "$helper" "$pkg"; then
                 echo -e "${GREEN}    ✓ ${pkg}${RESET}"
             else
                 echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
             fi
         done
     else
-        "$helper" $(shelly_subcommand "$helper" upgrade) --no-confirm --singlepane || shelly_exit=$?
+        "$helper" $(shelly_subcommand "$helper" upgrade) --no-confirm --singlepane \
+            < <(shelly_review_answers) || shelly_exit=$?
     fi
 
-    # Attempt 2: rebuild the still-pending packages individually
+    # Attempt 2: rebuild the still-pending packages individually.
+    #
+    # Shelly aborts the whole transaction at the first package that fails, so
+    # the ones after it were never attempted. Re-query instead of reusing the
+    # original list: rebuilding packages the bulk pass already installed costs
+    # many minutes each and reports them as fresh work.
     if [[ $shelly_exit -ne 0 ]]; then
-        echo -e "${YELLOW}  ! Retrying failed packages individually...${RESET}"
-        for entry in "${pending_list[@]}"; do
-            pkg="${entry%% *}"
-            if "$helper" $(shelly_subcommand "$helper" rebuild) --no-confirm "$pkg" &>/dev/null; then
-                echo -e "${GREEN}    ✓ ${pkg}${RESET}"
-            else
-                echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
-            fi
-        done
+        local remaining=() retry_rc=0 still
+        still=$(shelly_list_pending "$helper") || retry_rc=$?
+
+        if [[ $retry_rc -eq 0 ]]; then
+            while IFS= read -r entry; do
+                if [[ -z "$entry" ]]; then
+                    continue
+                fi
+                pkg="${entry%% *}"
+                if aur_should_skip "$pkg"; then
+                    continue
+                fi
+                remaining+=("$pkg")
+            done <<< "$still"
+        fi
+
+        if [[ ${#remaining[@]} -gt 0 ]]; then
+            echo ""
+            echo -e "${YELLOW}  ! Bulk upgrade stopped early. Retrying ${#remaining[@]} package(s) individually...${RESET}"
+            local index=0
+            for pkg in "${remaining[@]}"; do
+                index=$(( index + 1 ))
+                echo -e "${CYAN}  -> [${index}/${#remaining[@]}] ${pkg}${RESET}"
+                # --no-check mirrors the pacman backend's retry without test
+                # verification: a failing check() should not hold a package back.
+                if shelly_rebuild_one "$helper" "$pkg" --no-check; then
+                    echo -e "${GREEN}    ✓ ${pkg}${RESET}"
+                else
+                    echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
+                fi
+            done
+        fi
     fi
 
     # Determine results by comparing before/after state. If Shelly cannot be
