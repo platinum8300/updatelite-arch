@@ -17,7 +17,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Script version
-VERSION="1.3.3"
+VERSION="1.4.0"
 
 # Tracking variables
 declare -g UPDATES_PACMAN=0
@@ -96,6 +96,15 @@ check_deps() {
 declare -g SUDO_KEEPALIVE_PID=""
 
 start_sudo_keepalive() {
+    # A passwordless sudoers rule needs neither the prompt nor the keepalive,
+    # and must be checked first: with "NOPASSWD: ALL" there is no credential for
+    # "sudo -v" to refresh, so it asks for a password anyway and fails outright
+    # where no terminal can answer. Refusing to start there would be wrong, as
+    # every command the run makes would in fact have succeeded.
+    if sudo -n true 2>/dev/null; then
+        return 0
+    fi
+
     if ! sudo -v; then
         echo -e "${RED}ERROR: sudo authentication failed${RESET}"
         exit 1

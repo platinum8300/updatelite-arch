@@ -11,6 +11,10 @@ A modular, user-friendly script that handles system updates, cleanup, and mainte
 ## Features
 
 - **Unified Updates**: Pacman, AUR (paru/yay/shelly), Flatpak, and Docker
+- **AUR that keeps going**: a package the helper cannot build is retried with
+  `makepkg`, and once more on an older GCC if the compiler crashed. Whatever
+  still cannot be built is remembered, so it is reported in one line instead of
+  being rebuilt on every run, and retried by itself on a new version or compiler
 - **Smart Cleanup**: Orphan packages, cache, and journal management
 - **Service Monitoring**: Detect failed systemd services
 - **Reboot Detection**: Know when critical packages require a restart

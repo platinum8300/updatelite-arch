@@ -230,6 +230,23 @@ shelly_subcommand() {
     fi
 }
 
+# Rebuild and reinstall one package through whichever helper is configured, so
+# the escalation in aurbuild.sh does not need to know the helper's dialect.
+# --no-check / --skipreview mirror each other: a failing check() or an unread
+# PKGBUILD diff should not be what stops an unattended update.
+aur_helper_rebuild() {
+    local helper="$1" pkg="$2"
+
+    case "$(aur_helper_kind "$helper")" in
+        shelly)
+            shelly_rebuild_one "$helper" "$pkg" --no-check
+            ;;
+        *)
+            "$helper" -S --noconfirm --skipreview "$pkg"
+            ;;
+    esac
+}
+
 # Rebuild and reinstall one AUR package with Shelly. Extra Shelly flags may
 # follow the package name.
 #
@@ -307,54 +324,58 @@ update_aur_shelly() {
     fi
 
     echo -e "${CYAN}  Packages available for update:${RESET}"
-    local pending_list=() skipped=() entry pkg
+    local pending_list=() skipped=() held=() entry pkg target reason
     while IFS= read -r entry; do
         pkg="${entry%% *}"
+        target="${entry##* }"
+
         if aur_should_skip "$pkg"; then
-            echo -e "    ${DIM}· $entry (skipped)${RESET}"
+            echo -e "    ${DIM}· $entry (in AUR_SKIP_PACKAGES)${RESET}"
             skipped+=("$pkg")
-        else
-            echo "    • $entry"
-            pending_list+=("$entry")
+            continue
         fi
+
+        # A package that already failed at this exact version, on this exact
+        # toolchain, will fail the same way again. Saying so in one line beats
+        # spending several minutes rediscovering it on every run.
+        if reason=$(aur_failure_reason "$pkg" "$target"); then
+            echo -e "    ${DIM}· $entry (${reason})${RESET}"
+            held+=("$pkg")
+            continue
+        fi
+
+        echo "    • $entry"
+        pending_list+=("$entry")
     done <<< "$pending"
+
+    if [[ ${#held[@]} -gt 0 ]]; then
+        echo -e "${DIM}    ${#held[@]} held back after an earlier failure; a new version or"
+        echo -e "    toolchain retries them automatically, --retry-failed forces it now${RESET}"
+    fi
     echo ""
 
     if [[ ${#pending_list[@]} -eq 0 ]]; then
-        echo -e "${DIM}  · All pending packages are listed in AUR_SKIP_PACKAGES${RESET}"
+        echo -e "${DIM}  · Nothing left to attempt${RESET}"
         return 0
     fi
 
-    # Attempt 1: bulk upgrade. --singlepane renders a pacman-style linear stream
-    # (cleaner for non-interactive runs and logging than the default panes).
-    # Shelly has no --ignore equivalent, so when AUR_SKIP_PACKAGES matched
-    # something, update the remaining packages one by one instead.
+    # Attempt 1: one bulk upgrade, the fast path when nothing is wrong. Shelly
+    # has no --ignore equivalent, so anything held back sends every package down
+    # the per-package path instead.
     local shelly_exit=0
-    if [[ ${#skipped[@]} -gt 0 ]]; then
-        # Already per-package: report each result here and let the final
-        # before/after diff score failures. Triggering the bulk-failure retry
-        # below would re-run packages that just succeeded.
-        for entry in "${pending_list[@]}"; do
-            pkg="${entry%% *}"
-            if shelly_rebuild_one "$helper" "$pkg"; then
-                echo -e "${GREEN}    ✓ ${pkg}${RESET}"
-            else
-                echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
-            fi
-        done
-    else
+    if [[ ${#skipped[@]} -eq 0 && ${#held[@]} -eq 0 ]]; then
         "$helper" $(shelly_subcommand "$helper" upgrade) --no-confirm --singlepane \
             < <(shelly_review_answers) || shelly_exit=$?
+    else
+        shelly_exit=1
     fi
 
-    # Attempt 2: rebuild the still-pending packages individually.
-    #
-    # Shelly aborts the whole transaction at the first package that fails, so
-    # the ones after it were never attempted. Re-query instead of reusing the
-    # original list: rebuilding packages the bulk pass already installed costs
-    # many minutes each and reports them as fresh work.
+    # Attempt 2: everything still pending gets the full escalation, one package
+    # at a time. Re-query rather than reusing the original list, so packages the
+    # bulk pass already installed are not rebuilt: Shelly keeps going after a
+    # build failure and only aborts at the commit, so part of the list is done.
     if [[ $shelly_exit -ne 0 ]]; then
-        local remaining=() retry_rc=0 still
+        local remaining=() targets=() retry_rc=0 still index
         still=$(shelly_list_pending "$helper") || retry_rc=$?
 
         if [[ $retry_rc -eq 0 ]]; then
@@ -366,23 +387,25 @@ update_aur_shelly() {
                 if aur_should_skip "$pkg"; then
                     continue
                 fi
+                if aur_failure_reason "$pkg" "${entry##* }" >/dev/null; then
+                    continue
+                fi
                 remaining+=("$pkg")
+                targets+=("${entry##* }")
             done <<< "$still"
         fi
 
         if [[ ${#remaining[@]} -gt 0 ]]; then
             echo ""
-            echo -e "${YELLOW}  ! Bulk upgrade stopped early. Retrying ${#remaining[@]} package(s) individually...${RESET}"
-            local index=0
-            for pkg in "${remaining[@]}"; do
-                index=$(( index + 1 ))
-                echo -e "${CYAN}  -> [${index}/${#remaining[@]}] ${pkg}${RESET}"
-                # --no-check mirrors the pacman backend's retry without test
-                # verification: a failing check() should not hold a package back.
-                if shelly_rebuild_one "$helper" "$pkg" --no-check; then
-                    echo -e "${GREEN}    ✓ ${pkg}${RESET}"
+            echo -e "${CYAN}  Building ${#remaining[@]} package(s) individually...${RESET}"
+            for index in "${!remaining[@]}"; do
+                pkg="${remaining[$index]}"
+                echo -e "${CYAN}  -> [$(( index + 1 ))/${#remaining[@]}] ${pkg}${RESET}"
+                if aur_upgrade_one "$helper" "$pkg"; then
+                    echo -e "${GREEN}     ${AUR_MARK_OK} ${pkg}${RESET}"
                 else
-                    echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
+                    echo -e "${YELLOW}     ${AUR_MARK_FAIL} ${pkg} (${AUR_LAST_REASON})${RESET}"
+                    aur_record_failure "$pkg" "${targets[$index]}" "$AUR_LAST_REASON"
                 fi
             done
         fi

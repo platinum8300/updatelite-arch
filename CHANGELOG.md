@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-29
+
+### Added
+- AUR updates escalate instead of stopping at the helper. A package the helper
+  cannot build is retried with `makepkg` straight from its AUR git repository,
+  which is the reference way to build an AUR package and is unaffected by a
+  helper's own source handling: Shelly 3.1.1 neither extracts `.pkg.zst` sources
+  nor reads arch-specific `source_x86_64` arrays, so packages such as
+  `darkly-bin` and `electron41-bin` could never be installed through it. If the
+  build ends in an internal compiler error, it is retried once on an older
+  installed GCC, since an ICE is a fault in the compiler or the machine rather
+  than in the package.
+- Memory of deterministic failures, in `~/.cache/updatelite/aur-failures`. A
+  package that failed is not rebuilt on every subsequent run; it is listed in one
+  line with the reason. Records are keyed on the package version and the
+  toolchain, so a new release or a new compiler retries automatically without
+  the user clearing anything.
+- Per-package build logs under `$LOG_DIR/build/`. The terminal shows one status
+  line per attempt and, on failure, the tail of the log where the error is.
+  Streaming entire builds buried a run in configure output; discarding it made a
+  long build look like a freeze.
+- Blocking file conflicts are reported with the path and whether any package
+  owns it, which is what distinguishes a leftover from a real collision.
+
+### Fixed
+- updateLITE no longer refuses to start where sudo is passwordless. With
+  `NOPASSWD: ALL` there is no credential for `sudo -v` to refresh, so it asks for
+  a password regardless and fails outright with no terminal to answer, even
+  though every command in the run would have succeeded.
+- `aur_helper_kind` classifies on the basename. `AUR_HELPER` may hold a path, and
+  treating `/usr/bin/shelly` as a pacman-style helper sent every call through
+  flags Shelly rejects.
+- The AUR tests no longer reach the network or the package database: the
+  `makepkg` path is stubbed and fixture packages are named so they cannot
+  collide with a real one.
+
 ## [1.3.3] - 2026-08-29
 
 ### Fixed

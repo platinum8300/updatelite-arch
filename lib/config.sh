@@ -232,8 +232,12 @@ detect_aur_helper() {
 # Classify an AUR helper by its command-line dialect.
 # Returns "shelly" for Shelly (verb-based CLI talking to libalpm directly),
 # or "pacman" for paru/yay (pacman-flag compatible wrappers).
+#
+# Matches on the basename: AUR_HELPER may name a path rather than a bare
+# command, and classifying "/usr/bin/shelly" as a pacman-style helper would send
+# every call through flags Shelly does not accept.
 aur_helper_kind() {
-    case "$1" in
+    case "${1##*/}" in
         shelly) echo "shelly" ;;
         *)      echo "pacman" ;;
     esac
