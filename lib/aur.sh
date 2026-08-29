@@ -50,17 +50,22 @@ update_aur() {
     echo -e "${MAGENTA}  → Checking and updating AUR packages...${RESET}"
     echo ""
 
+    local backend_rc=0
     case "$(aur_helper_kind "$helper")" in
         shelly)
-            update_aur_shelly "$helper"
+            update_aur_shelly "$helper" || backend_rc=$?
             ;;
         *)
-            update_aur_pacman "$helper"
+            update_aur_pacman "$helper" || backend_rc=$?
             ;;
     esac
 
     echo ""
-    echo -e "${GREEN}  ✓ AUR process completed${RESET}"
+    if [[ $backend_rc -ne 0 ]]; then
+        echo -e "${YELLOW}  ! AUR process completed with errors${RESET}"
+    else
+        echo -e "${GREEN}  ✓ AUR process completed${RESET}"
+    fi
 
     end_section
 }
@@ -154,20 +159,88 @@ update_aur_pacman() {
     done
 }
 
-# List pending Shelly AUR updates as "name version" lines, one per package.
-# Names and versions are emitted in matching order in the JSON; every package
-# object carries both fields, so index pairing is reliable. Shared by the
-# update backend and the dry-run preview so both parse Shelly identically.
-shelly_list_pending() {
-    local helper="$1" pending_json
-    pending_json=$("$helper" aur list-updates -j 2>/dev/null || echo "[]")
+# Shelly 3.0 reorganised its CLI from "shelly aur <verb>" to "shelly <verb> aur",
+# and dropped the "aur update" verb: single-package rebuilds now go through
+# "install aur". Both dialects are still in the wild, so detect which one is
+# installed instead of hardcoding either.
+SHELLY_DIALECT=""
+shelly_detect_dialect() {
+    local helper="$1" version major
 
-    local names=() versions=() i entry
-    mapfile -t names    < <(grep -oP '"Name":"\K[^"]+'    <<< "$pending_json")
-    mapfile -t versions < <(grep -oP '"Version":"\K[^"]+' <<< "$pending_json")
+    if [[ -n "$SHELLY_DIALECT" ]]; then
+        return 0
+    fi
+
+    version=$("$helper" --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)*' | head -1 || true)
+    major="${version%%.*}"
+
+    if [[ "$major" =~ ^[0-9]+$ ]]; then
+        if [[ "$major" -ge 3 ]]; then
+            SHELLY_DIALECT="verb-first"
+        else
+            SHELLY_DIALECT="aur-first"
+        fi
+    elif "$helper" --help 2>/dev/null | grep -qE '^[[:space:]]+aur[[:space:]]'; then
+        # Unreadable version: fall back to looking for the 2.x "aur" command group
+        SHELLY_DIALECT="aur-first"
+    else
+        SHELLY_DIALECT="verb-first"
+    fi
+}
+
+# Emit the subcommand words for an AUR action in the installed dialect, so
+# callers can splice them into a Shelly invocation.
+#   list-updates  pending updates as JSON
+#   upgrade       rebuild + reinstall every out-of-date package
+#   rebuild       rebuild + reinstall a single package
+shelly_subcommand() {
+    local helper="$1" action="$2"
+
+    shelly_detect_dialect "$helper"
+
+    if [[ "$SHELLY_DIALECT" == "verb-first" ]]; then
+        case "$action" in
+            list-updates) echo "list-updates aur" ;;
+            upgrade)      echo "upgrade aur" ;;
+            rebuild)      echo "install aur" ;;
+        esac
+    else
+        case "$action" in
+            list-updates) echo "aur list-updates" ;;
+            upgrade)      echo "aur upgrade" ;;
+            rebuild)      echo "aur update" ;;
+        esac
+    fi
+}
+
+# List pending Shelly AUR updates as "name old -> new" lines, one per package,
+# matching the format paru reports so the summary renders identically.
+# Names and versions are emitted in matching order in the JSON, so index pairing
+# is reliable; 2.x omits NewVersion, in which case only the version is shown.
+# Returns non-zero when Shelly itself fails, so callers can tell "nothing
+# pending" apart from "could not ask" instead of reporting a clean run.
+# Shared by the update backend and the dry-run preview so both parse Shelly
+# identically.
+shelly_list_pending() {
+    local helper="$1" pending_json subcommand
+
+    subcommand=$(shelly_subcommand "$helper" list-updates)
+    pending_json=$("$helper" $subcommand -j 2>/dev/null) || return $?
+
+    local names=() versions=() new_versions=() i entry
+    mapfile -t names        < <(grep -oP '"Name":"\K[^"]+'       <<< "$pending_json")
+    mapfile -t versions     < <(grep -oP '"Version":"\K[^"]+'    <<< "$pending_json")
+    mapfile -t new_versions < <(grep -oP '"NewVersion":"\K[^"]+' <<< "$pending_json")
     for i in "${!names[@]}"; do
-        entry="${names[$i]} ${versions[$i]:-}"
-        echo "${entry% }"
+        entry="${names[$i]}"
+        if [[ -n "${versions[$i]:-}" && -n "${new_versions[$i]:-}" ]]; then
+            entry+=" ${versions[$i]} -> ${new_versions[$i]}"
+        elif [[ -n "${new_versions[$i]:-}" ]]; then
+            entry+=" ${new_versions[$i]}"
+        elif [[ -n "${versions[$i]:-}" ]]; then
+            entry+=" ${versions[$i]}"
+        fi
+        echo "$entry"
     done
 }
 
@@ -178,14 +251,23 @@ shelly_list_pending() {
 # upgrade -> per-package fallback -> diff to score results) using Shelly's own
 # verbs, and reuse the JSON output for reliable, locale-independent parsing.
 #
-#   shelly aur list-updates -j   pending updates as JSON (Name/Version per entry)
-#   shelly aur upgrade           rebuild + reinstall every out-of-date package
-#   shelly aur update <pkg>      rebuild + reinstall a single package
+# The exact subcommand spelling depends on the installed Shelly major version;
+# see shelly_subcommand() for the dialects.
 update_aur_shelly() {
     local helper="$1"
 
-    local pending
-    pending=$(shelly_list_pending "$helper")
+    # Warm the dialect cache in this shell so the probe runs once, not once per
+    # command substitution below.
+    shelly_detect_dialect "$helper"
+
+    local pending list_rc=0
+    pending=$(shelly_list_pending "$helper") || list_rc=$?
+
+    if [[ $list_rc -ne 0 ]]; then
+        echo -e "${YELLOW}  ! Could not read pending AUR updates from ${helper}${RESET}"
+        echo -e "${DIM}    Run '${helper} $(shelly_subcommand "$helper" list-updates)' to see why${RESET}"
+        return 1
+    fi
 
     if [[ -z "$pending" ]]; then
         echo -e "${GREEN}  ✓ All AUR packages are up to date${RESET}"
@@ -222,14 +304,14 @@ update_aur_shelly() {
         # below would re-run packages that just succeeded.
         for entry in "${pending_list[@]}"; do
             pkg="${entry%% *}"
-            if "$helper" aur update --no-confirm --singlepane "$pkg"; then
+            if "$helper" $(shelly_subcommand "$helper" rebuild) --no-confirm --singlepane "$pkg"; then
                 echo -e "${GREEN}    ✓ ${pkg}${RESET}"
             else
                 echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
             fi
         done
     else
-        "$helper" aur upgrade --no-confirm --singlepane || shelly_exit=$?
+        "$helper" $(shelly_subcommand "$helper" upgrade) --no-confirm --singlepane || shelly_exit=$?
     fi
 
     # Attempt 2: rebuild the still-pending packages individually
@@ -237,7 +319,7 @@ update_aur_shelly() {
         echo -e "${YELLOW}  ! Retrying failed packages individually...${RESET}"
         for entry in "${pending_list[@]}"; do
             pkg="${entry%% *}"
-            if "$helper" aur update --no-confirm "$pkg" &>/dev/null; then
+            if "$helper" $(shelly_subcommand "$helper" rebuild) --no-confirm "$pkg" &>/dev/null; then
                 echo -e "${GREEN}    ✓ ${pkg}${RESET}"
             else
                 echo -e "${YELLOW}    ✗ ${pkg}${RESET}"
@@ -245,9 +327,20 @@ update_aur_shelly() {
         done
     fi
 
-    # Determine results by comparing before/after state
+    # Determine results by comparing before/after state. If Shelly cannot be
+    # queried now, none of the upgrades can be confirmed, so count them failed
+    # rather than silently crediting them as successful.
     local still_pending
-    still_pending=$(shelly_list_pending "$helper" | awk '{print $1}')
+    list_rc=0
+    still_pending=$(shelly_list_pending "$helper") || list_rc=$?
+
+    if [[ $list_rc -ne 0 ]]; then
+        echo -e "${YELLOW}  ! Could not verify which packages were upgraded${RESET}"
+        UPDATES_AUR_FAILED=$(( UPDATES_AUR_FAILED + ${#pending_list[@]} ))
+        return 1
+    fi
+
+    still_pending=$(awk '{print $1}' <<< "$still_pending")
 
     for entry in "${pending_list[@]}"; do
         pkg="${entry%% *}"

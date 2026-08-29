@@ -92,11 +92,20 @@ dry_run_aur() {
 
     show_section "AUR - Arch User Repository ($helper)" "${MAGENTA}" "📦"
 
-    local pending=""
+    local pending="" list_rc=0
     if [[ "$(aur_helper_kind "$helper")" == "shelly" ]]; then
-        pending=$(shelly_list_pending "$helper")
+        shelly_detect_dialect "$helper"
+        pending=$(shelly_list_pending "$helper") || list_rc=$?
     else
         pending=$("$helper" -Qua 2>/dev/null || true)
+    fi
+
+    # A helper that could not be queried is not the same as a system with
+    # nothing to update: say so instead of previewing a clean run.
+    if [[ $list_rc -ne 0 ]]; then
+        echo -e "${YELLOW}  ! Could not read pending AUR updates from ${helper}${RESET}"
+        end_section
+        return 0
     fi
 
     if [[ -n "$pending" ]]; then

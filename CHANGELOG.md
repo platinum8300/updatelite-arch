@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-08-29
+
+### Fixed
+- Shelly backend: adapt to the Shelly 3.0 CLI, which moved AUR actions from
+  `shelly aur <verb>` to `shelly <verb> aur` and dropped the `aur update` verb
+  in favour of `install aur`. Against Shelly 3.x the old spelling made Shelly
+  treat `aur` as a search term and exit non-zero, which the pending-update
+  parser turned into an empty list, so every run reported "All AUR packages are
+  up to date" and no AUR package was ever upgraded. The installed dialect is now
+  detected from the helper's version, so both 2.x and 3.x keep working.
+- Shelly backend: a helper that cannot be queried is no longer reported as a
+  system with nothing to update. Listing failures propagate, the AUR section
+  warns instead of printing a success mark, and upgrades that cannot be verified
+  are counted as failed rather than credited as successful. Applies to
+  `--dry-run` as well.
+
+### Changed
+- Shelly backend: pending packages are listed as `name old -> new`, matching the
+  format paru reports, instead of showing only one version. Shelly 3.x returns
+  both the installed and the candidate version; the parser previously used the
+  installed one.
+
 ## [1.3.1] - 2026-07-04
 
 ### Fixed
