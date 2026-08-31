@@ -90,3 +90,20 @@ CRITICAL_PACKAGES=linux systemd glibc gcc-libs linux-firmware mesa nvidia fwupd
 # kernel+driver bundles that pin an exact driver version.
 # Example: DEP_MISMATCH_HOLDS=my-kernel-nvidia-open:nvidia-utils
 DEP_MISMATCH_HOLDS=
+
+# -----------------------------------------------------------------
+# CONFLICT RESOLUTION
+# -----------------------------------------------------------------
+
+# Some upstream updates merge one package into another: the incoming package
+# declares both Replaces and Provides for the installed one. pacman applies
+# that rename silently once the old name is gone from every repo, but it asks
+# for confirmation while the old name still exists somewhere (a CachyOS
+# rebuild shadowing an Arch package, for instance) - and the unattended
+# --noconfirm answers no, aborting the whole upgrade.
+#
+# With this enabled, updateLITE verifies the Replaces/Provides metadata of the
+# incoming package and only then removes the superseded one and retries.
+# Anything that is not a verified rename is left to you, and packages listed
+# in CRITICAL_PACKAGES are never touched.
+PACMAN_AUTO_RESOLVE_CONFLICTS=true

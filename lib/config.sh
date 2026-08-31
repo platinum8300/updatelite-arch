@@ -46,6 +46,9 @@ declare -g ENABLE_COLORS="${ENABLE_COLORS:-true}"
 
 declare -g CRITICAL_PACKAGES="${CRITICAL_PACKAGES:-linux linux-cachyos linux-cachyos-bore linux-cachyos-lts linux-zen linux-lts systemd glibc gcc-libs linux-firmware mesa fwupd intel-ucode amd-ucode nvidia nvidia-utils nvidia-open dkms}"
 
+# Let pacman conflicts that are only a package rename resolve themselves
+declare -g PACMAN_AUTO_RESOLVE_CONFLICTS="${PACMAN_AUTO_RESOLVE_CONFLICTS:-true}"
+
 # "package:dependency" pairs to hold back when the package pins a dependency
 # version that no longer matches the installed one (empty by default)
 declare -g DEP_MISMATCH_HOLDS="${DEP_MISMATCH_HOLDS:-}"
@@ -85,7 +88,8 @@ load_config() {
             USER_CACHE_MAX_DAYS|USER_CACHE_MIN_SIZE_MB|\
             ENABLE_LOGGING|LOG_DIR|\
             ENABLE_PHRASES|ENABLE_COLORS|\
-            CRITICAL_PACKAGES|DEP_MISMATCH_HOLDS)
+            CRITICAL_PACKAGES|DEP_MISMATCH_HOLDS|\
+            PACMAN_AUTO_RESOLVE_CONFLICTS)
                 declare -g "$key=$value"
                 ;;
         esac
@@ -151,6 +155,10 @@ CRITICAL_PACKAGES=linux linux-cachyos linux-cachyos-bore linux-cachyos-lts linux
 # kernel+driver bundles that pin an exact driver version.
 # Example: DEP_MISMATCH_HOLDS=my-kernel-nvidia-open:nvidia-utils
 DEP_MISMATCH_HOLDS=
+
+# Resolve pacman conflicts automatically when they are only a package rename
+# (the incoming package declares Replaces and Provides for the installed one)
+PACMAN_AUTO_RESOLVE_CONFLICTS=true
 CONFIGEOF
 
     echo "Created default config at $CONFIG_FILE"

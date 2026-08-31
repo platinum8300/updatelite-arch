@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-31
+
+### Added
+- Pacman conflicts that are only a package rename now resolve themselves.
+  When an upstream update merges one package into another, the incoming
+  package declares both `Replaces` and `Provides` for the installed one.
+  pacman applies that rename silently once the old name is gone from every
+  repo, but it asks for confirmation while the old name still exists
+  somewhere - a CachyOS rebuild shadowing an Arch package, for instance - and
+  the unattended `--noconfirm` answers no, dropping the entire upgrade. The
+  metadata of the incoming package is verified first, and only a conflict
+  where both fields name the installed package is resolved: the superseded
+  package is removed and the upgrade rerun, with the removal rolled back if
+  the upgrade still fails. A single conflict that does not check out
+  disqualifies the whole batch, and `CRITICAL_PACKAGES` are never touched, so
+  a genuine conflict is still reported rather than resolved. Configurable
+  through `PACMAN_AUTO_RESOLVE_CONFLICTS`.
+
+### Changed
+- A failed pacman run suggests something related to the failure. The fixed
+  `sudo pacman -S archlinux-keyring` was wrong for every error but one, and
+  actively misleading on a conflict or a dead mirror. Package conflicts, file
+  conflicts, signature failures, corrupted caches, full disks, mirror errors
+  and unsatisfiable dependencies each get their own hint, matched against both
+  the English and Spanish wording pacman prints; an unrecognised failure says
+  to rerun the upgrade by hand rather than inventing a cause.
+
 ## [1.4.0] - 2026-08-29
 
 ### Added
